@@ -1,5 +1,5 @@
 const fs = require('node:fs');
-fs.mkdirSync('public', {recursive:true});
+fs.mkdirSync('out', {recursive:true});
 for (const name of ['index.html', 'import-utils.js']) {
-  fs.copyFileSync(name, 'public/' + name);
+  fs.copyFileSync(name, 'out/' + name);
 }

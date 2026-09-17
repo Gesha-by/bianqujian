@@ -1,3 +1,4 @@
 public/
+out/
 dist/
 *.tar.gz
