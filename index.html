@@ -1,0 +1,309 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>便取件 原型</title>
+  <style>
+    :root {
+      --ink:#15213d;
+      --muted:#71809c;
+      --blue:#315cff;
+      --blue-soft:#e8edff;
+      --canvas:#f4f6fb;
+      --line:#e9edf5;
+      --success:#14a06f;
+    }
+    * { box-sizing:border-box; }
+    body {
+      margin:0; color:var(--ink); background:var(--canvas);
+      font-family:"Microsoft YaHei","PingFang SC",system-ui,sans-serif;
+    }
+    button { font:inherit; cursor:pointer; border:0; }
+    .page {
+      min-height:100vh; max-width:1320px; margin:auto; padding:48px 28px 72px;
+      display:grid; grid-template-columns:1fr 430px; gap:72px; align-items:center;
+    }
+    .eyebrow { color:var(--blue); font-size:14px; font-weight:800; letter-spacing:.12em; }
+    h1 { font-size:52px; line-height:1.18; letter-spacing:-.05em; margin:14px 0 18px; }
+    .lead { max-width:610px; font-size:19px; line-height:1.8; color:var(--muted); margin:0 0 30px; }
+    .principles { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin:32px 0; }
+    .principle { background:#fff; padding:18px; border-radius:18px; box-shadow:0 10px 28px #26345c0a; }
+    .principle strong { display:block; font-size:16px; margin-bottom:6px; }
+    .principle span { color:var(--muted); font-size:13px; line-height:1.55; }
+    .widget-wrap { margin-top:34px; }
+    .widget-label { display:flex; justify-content:space-between; align-items:center; margin-bottom:11px; font-size:14px; font-weight:700; }
+    .widget {
+      width:360px; border-radius:27px; padding:22px; color:white;
+      background:linear-gradient(140deg,#192e83,#5477ff); box-shadow:0 20px 45px #2442a844;
+    }
+    .widget small { opacity:.78; font-weight:700; }
+    .widget h2 { margin:9px 0 5px; font-size:29px; }
+    .widget p { margin:0; font-size:14px; opacity:.9; }
+    .widget-list { margin:18px 0 16px; padding-top:14px; border-top:1px solid #ffffff32; font-size:14px; line-height:1.8; }
+    .widget button { width:100%; padding:11px; background:#fff; color:#17233d; border-radius:13px; font-size:14px; font-weight:800; }
+    .phone {
+      background:#0d1427; padding:12px; border-radius:52px; box-shadow:0 35px 70px #17233d45;
+      width:430px; min-height:830px;
+    }
+    .screen { overflow:hidden; min-height:806px; background:var(--canvas); border-radius:42px; padding:20px 18px 24px; position:relative; }
+    .status { height:40px; display:flex; justify-content:space-between; align-items:center; padding:0 9px; font-size:13px; font-weight:800; }
+    .title-row { display:flex; justify-content:space-between; align-items:center; padding:13px 9px 20px; }
+    .app-name { font-size:28px; font-weight:900; letter-spacing:-.05em; }
+    .bell { width:39px; height:39px; border-radius:13px; background:white; display:grid; place-items:center; font-size:19px; }
+    .hero { border-radius:27px; padding:22px; color:white; background:linear-gradient(135deg,#315cff,#7c94ff); box-shadow:0 15px 32px #315cff32; }
+    .hero small { font-weight:700; opacity:.85; }
+    .hero h2 { margin:8px 0 15px; font-size:28px; letter-spacing:-.045em; }
+    .place { display:inline-flex; align-items:center; gap:7px; background:#ffffff29; border-radius:20px; padding:9px 12px; font-size:12px; font-weight:700; }
+    .wait-toggle { margin-left:6px; color:#fff; background:#ffffff24; border:1px solid #ffffff55; border-radius:9px; padding:5px 8px; font-size:11px; font-weight:800; }
+    .wait-toggle.active { background:#fff; color:var(--blue); }
+    .import-card { background:#fff; margin:15px 0 0; padding:14px 15px; border:1px solid #e0e7ff; border-radius:18px; display:flex; align-items:center; justify-content:space-between; gap:10px; box-shadow:0 8px 22px #26345c0a; }
+    .import-card strong { display:block; font-size:13px; }
+    .import-card span { display:block; color:var(--muted); font-size:10px; margin-top:3px; }
+    .import-card button { flex:none; color:var(--blue); background:var(--blue-soft); padding:9px 11px; border-radius:10px; font-size:12px; font-weight:800; }
+    .ocr-panel { display:none; background:#eef2ff; border:1px solid #d9e2ff; margin:12px 0 0; padding:13px; border-radius:17px; }
+    .ocr-panel.show { display:block; }
+    .ocr-status { font-size:12px; color:#415275; line-height:1.5; }
+    .ocr-preview { margin:10px 0; display:grid; gap:7px; }
+    .ocr-item { display:flex; align-items:center; gap:7px; padding:8px 9px; background:#fff; border-radius:9px; font-size:12px; font-weight:700; }
+    .ocr-item input { accent-color:var(--blue); }
+    .ocr-actions { display:flex; gap:8px; }
+    .ocr-actions button { flex:1; padding:9px; border-radius:9px; font-size:12px; font-weight:800; }
+    .ocr-actions .secondary { color:#4d5d79; background:#fff; border:1px solid #d9e2ff; }
+    .ocr-actions .primary { background:var(--blue); color:#fff; }
+    .section-title { display:flex; justify-content:space-between; align-items:flex-end; margin:25px 5px 13px; }
+    .section-title strong { font-size:18px; }
+    .section-title span { font-size:12px; color:var(--muted); }
+    .section-actions { display:flex; align-items:center; gap:8px; }
+    .import-trigger { border:1px solid #dce4f4; background:#fff; color:var(--blue); border-radius:10px; padding:7px 9px; font-size:11px; font-weight:800; }
+    .parcel { background:white; padding:15px; border-radius:22px; margin-bottom:12px; box-shadow:0 8px 22px #26345c0a; display:grid; grid-template-columns:72px 1fr; gap:13px; }
+    .parcel.found { outline:2px solid #79d7b4; background:#f5fffa; }
+    .product { border-radius:17px; display:grid; place-items:center; overflow:hidden; }
+    .soap { background:#f8f5e7; }
+    .soap-shape { width:37px; height:46px; background:#f7d42a; border-radius:4px 4px 9px 9px; position:relative; box-shadow:inset 0 7px #e1b70d; }
+    .soap-shape::after { content:"28"; position:absolute; color:#305ac2; font:900 12px Arial; top:18px; left:9px; }
+    .towel { background:#f1f3f6; }
+    .towel-shape { width:41px; height:49px; border-radius:18px 18px 7px 7px; background:repeating-linear-gradient(#c0c4cc,#c0c4cc 6px,#adb2bb 7px,#adb2bb 9px); }
+    .parcel-info { min-width:0; }
+    .parcel-top { display:flex; justify-content:space-between; gap:8px; }
+    .parcel h3 { margin:0; font-size:15px; letter-spacing:-.03em; }
+    .deadline { color:#e35f39; font-size:11px; font-weight:800; white-space:nowrap; }
+    .source { color:var(--muted); font-size:11px; margin:5px 0 11px; }
+    .find-row { display:flex; justify-content:space-between; align-items:center; }
+    .shelf { color:#40506e; font:800 16px Consolas,monospace; letter-spacing:.02em; }
+    .find { border:1px solid #dfe5f2; background:#f5f7fb; color:#42516c; padding:7px 10px; border-radius:10px; font-size:12px; font-weight:800; display:inline-flex; align-items:center; gap:7px; }
+    .check-box { width:16px; height:16px; border:1.8px solid #9aa7be; border-radius:4px; background:#fff; position:relative; display:inline-block; }
+    .parcel.found .find { background:#dff8ec; border-color:#dff8ec; color:#11845b; }
+    .parcel.found .check-box { background:#14a06f; border-color:#14a06f; }
+    .parcel.found .check-box::after { content:""; position:absolute; width:7px; height:4px; border-left:2px solid #fff; border-bottom:2px solid #fff; transform:rotate(-45deg); left:3px; top:3px; }
+    .handoff { margin-top:17px; background:#17233d; color:white; border-radius:20px; padding:17px; }
+    .handoff strong { display:block; font-size:14px; }
+    .handoff span { display:block; margin:5px 0 13px; color:#bec8dc; font-size:12px; }
+    .handoff button { width:100%; background:#ff5a20; color:#fff; border-radius:12px; padding:12px; font-size:14px; font-weight:900; }
+    .empty-note { margin-top:12px; color:#5b6984; font-size:12px; line-height:1.55; text-align:center; }
+    .modal { position:fixed; inset:0; display:none; align-items:center; justify-content:center; padding:20px; background:#101a34a8; }
+    .modal.show { display:flex; }
+    .dialog { width:min(420px,100%); background:#fff; border-radius:26px; padding:28px; box-shadow:0 25px 70px #0004; }
+    .dialog h2 { margin:0 0 9px; font-size:24px; }
+    .dialog p { color:var(--muted); line-height:1.7; margin:0 0 20px; }
+    .dialog button { width:100%; background:var(--blue); color:#fff; border-radius:13px; padding:13px; font-weight:800; }
+    .ocr-dialog input[type=file] { width:100%; padding:12px; border:1px dashed #b9c5dd; border-radius:13px; color:var(--muted); background:#f8faff; }
+    .ocr-preview { display:none; width:100%; max-height:170px; object-fit:contain; margin:14px 0; border-radius:13px; background:#f4f6fb; }
+    .ocr-status { margin:14px 0; padding:11px 13px; border-radius:12px; background:#f3f6fc; color:#5c6b87; font-size:12px; line-height:1.55; }
+    .ocr-results { display:none; margin:14px 0; border-top:1px solid var(--line); }
+    .ocr-result { display:flex; align-items:center; gap:10px; padding:11px 0; border-bottom:1px solid var(--line); }
+    .ocr-result input { accent-color:var(--blue); }
+    .ocr-result strong { font-size:13px; }
+    .ocr-result span { margin-left:auto; color:var(--muted); font:700 12px Consolas,monospace; }
+    .imported .product { background:#edf1ff; color:var(--blue); font-weight:900; font-size:22px; }
+    @media (max-width:900px) {
+      .page { grid-template-columns:1fr; gap:34px; padding:32px 20px 55px; }
+      h1 { font-size:39px; }
+      .principles { grid-template-columns:1fr; }
+      .phone { margin:auto; max-width:100%; }
+      .widget { width:100%; max-width:360px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <section>
+      <div class="eyebrow">校园取件 · 同学体验版</div>
+      <p class="empty-note">以下两件商品为示例。当前不读取手机通知，小组件和拼多多跳转仅作预览；刷新页面会重置清单。图片在浏览器识别，首次使用需要联网加载识别资源。</p>
+      <h1>下楼前，先知道<br>该找哪两件。</h1>
+      <p class="lead">“便取件”不替代驿站和拼多多的扫码出库。到件通知负责提供货架位置与状态；商品名可来自平台通知、截图识别或用户确认，每一条都会标清来源。</p>
+      <div class="principles">
+        <div class="principle"><strong>按地点合并</strong><span>同一驿站的包裹，出门一次就能取完。</span></div>
+        <div class="principle"><strong>按商品找件</strong><span>先知道要找洗衣液还是浴巾，不用翻订单。</span></div>
+        <div class="principle"><strong>原 App 出库</strong><span>找到包裹后，再回拼多多扫码，流程不改变。</span></div>
+      </div>
+      <div class="widget-wrap">
+        <div class="widget-label"><span>桌面小组件预览</span><span id="widgetState">自动更新</span></div>
+        <section class="widget" aria-label="待取件桌面小组件">
+          <small>便取件 · 南区菜鸟驿站</small>
+          <h2 id="widgetCount">待找 2 件</h2>
+          <p id="widgetMessage">今天 18:00 前取 · 下楼约 3 分钟</p>
+          <div class="widget-list" id="widgetList">A 区 A-302-8 · 洗衣液<br>B 区 B-127-6 · 抗菌浴巾</div>
+          <button id="widgetOpen">查看找件清单</button>
+        </section>
+      </div>
+    </section>
+
+    <section class="phone" aria-label="便取件手机界面">
+      <div class="screen">
+        <div class="status"><span>17:15</span><span>▮▮▮ 5G&nbsp;&nbsp;70%</span></div>
+        <div class="title-row"><div class="app-name">便取件</div><div class="bell">♟</div></div>
+        <section class="hero">
+          <small>下楼前，先看清楚要找什么</small>
+          <h2>南区菜鸟驿站 · <span id="heroCount">2 件</span></h2>
+          <div class="place">● 今天 18:00 前取 · 约 3 分钟 <button class="wait-toggle" id="waitToggle">等一等一起取</button></div>
+        </section>
+        <section class="import-card">
+          <div><strong>导入订单长截图</strong><span>一次识别多个商品，先确认再加入清单</span></div>
+          <button id="importImage">识别图片</button>
+        </section>
+        <div class="section-title"><strong>先按货架号找件</strong><span id="foundCount">已找到 0 / 2</span></div>
+
+        <article class="parcel" data-id="soap">
+          <div class="product soap"><div class="soap-shape"></div></div>
+          <div class="parcel-info">
+            <div class="parcel-top"><h3>花漾茉莉洗衣液</h3><span class="deadline">18:00 前取</span></div>
+            <div class="source">日化 · 4斤装 · 示例数据</div>
+            <div class="find-row"><span class="shelf">A-302-8</span><button class="find" aria-pressed="false"><span class="check-box" aria-hidden="true"></span><span class="find-label">已找到</span></button></div>
+          </div>
+        </article>
+        <article class="parcel" data-id="towel">
+          <div class="product towel"><div class="towel-shape"></div></div>
+          <div class="parcel-info">
+            <div class="parcel-top"><h3>7A 抗菌浴巾</h3><span class="deadline">18:00 前取</span></div>
+            <div class="source">家纺 · 雾松灰 · 示例数据</div>
+            <div class="find-row"><span class="shelf">B-127-6</span><button class="find" aria-pressed="false"><span class="check-box" aria-hidden="true"></span><span class="find-label">已找到</span></button></div>
+          </div>
+        </article>
+
+        <section class="handoff">
+          <strong id="handoffTitle">找到包裹后，再扫码出库</strong>
+          <span id="handoffText">出库仍由你熟悉的拼多多完成。</span>
+          <button id="openPdd">打开拼多多</button>
+        </section>
+        <div class="empty-note">原型演示：点击“已找到”可同步更新桌面小组件。</div>
+      </div>
+    </section>
+  </main>
+
+  <div class="modal" id="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+    <div class="dialog">
+      <h2 id="modalTitle">已准备跳转到拼多多</h2>
+      <p>正式 Android 版会尝试打开拼多多 App；能否直达消费者取件码页，需要以拼多多公开的跳转能力和真机测试为准。</p>
+      <button id="closeModal">知道了</button>
+    </div>
+  </div>
+  <div class="modal" id="ocrModal" role="dialog" aria-modal="true" aria-labelledby="ocrTitle">
+    <div class="dialog ocr-dialog">
+      <h2 id="ocrTitle">识别长截图</h2>
+      <p>选择包含多个到件通知的长截图。原型会把识别出的包裹先列出来，确认后再加入找件清单。</p>
+      <input id="imageInput" type="file" accept="image/*">
+      <img id="imagePreview" class="ocr-preview" alt="待识别的长截图预览">
+      <div id="ocrStatus" class="ocr-status">支持一张长截图中的多个包裹。正式版会在本机使用系统 OCR 处理。</div>
+      <div id="ocrResults" class="ocr-results"></div>
+      <button id="addOcrResults" style="display:none">确认加入找件清单</button>
+      <button id="closeOcr" style="margin-top:8px;background:#eef2f8;color:#44526c">关闭</button>
+    </div>
+  </div>
+
+  <script src="import-utils.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+  <script>
+    const parcelSeed = [
+      { id: "soap", shelf: "A-302-8", name: "洗衣液", found: false },
+      { id: "towel", shelf: "B-127-6", name: "抗菌浴巾", found: false }
+    ];
+    let parcels = parcelSeed;
+    let waitMode = false;
+    const $ = (selector) => document.querySelector(selector);
+    function update() {
+      const found = parcels.filter(p => p.found).length;
+      const remaining = parcels.length - found;
+      $("#foundCount").textContent = `已找到 ${found} / ${parcels.length}`;
+      $("#heroCount").textContent = remaining ? `${remaining} 件待找` : "已全部找到";
+      $("#widgetCount").textContent = remaining ? `待找 ${remaining} 件` : "包裹已全部找到";
+      $("#widgetMessage").textContent = waitMode ? "正在等同地点的新包裹" : (remaining ? "今天 18:00 前取 · 下楼约 3 分钟" : "现在打开拼多多，扫码出库即可");
+      $("#widgetList").innerHTML = parcels.map(p => `${p.found ? "✓" : "•"} ${p.shelf} · ${p.name}`).join("<br>");
+      $("#widgetState").textContent = waitMode ? "等待合并" : (found ? "已同步" : "自动更新");
+      $("#handoffTitle").textContent = remaining ? "找到包裹后，再扫码出库" : "两件都已找到，可以扫码出库";
+      $("#handoffText").textContent = remaining ? "出库仍由你熟悉的拼多多完成。" : "打开拼多多，扫描包裹条形码即可。";
+      $("#waitToggle").textContent = waitMode ? "取消等待" : "等一等一起取";
+      $("#waitToggle").classList.toggle("active", waitMode);
+    }
+    function bindParcelCard(card) {
+      card.querySelector(".find").addEventListener("click", () => {
+        const parcel = parcels.find(p => p.id === card.dataset.id);
+        parcel.found = !parcel.found;
+        card.classList.toggle("found", parcel.found);
+        card.querySelector(".find").setAttribute("aria-pressed", String(parcel.found));
+        update();
+      });
+    }
+    document.querySelectorAll(".parcel").forEach(bindParcelCard);
+    const openModal = () => $("#modal").classList.add("show");
+    $("#openPdd").addEventListener("click", openModal);
+    $("#waitToggle").addEventListener("click", () => { waitMode = !waitMode; update(); });
+    $("#widgetOpen").addEventListener("click", () => document.querySelector(".phone").scrollIntoView({ behavior: "smooth", block: "center" }));
+    $("#closeModal").addEventListener("click", () => $("#modal").classList.remove("show"));
+    $("#modal").addEventListener("click", (event) => { if (event.target === $("#modal")) $("#modal").classList.remove("show"); });
+    const ocrModal = $("#ocrModal");
+    const imagePreview = $("#imagePreview");
+    const ocrStatus = $("#ocrStatus");
+    const ocrResults = $("#ocrResults");
+    let pendingOcr = [];
+    function showOcrResults(items) {
+      pendingOcr = items.map(item => ({name: ImportUtils.escape(item.name), shelf: ImportUtils.escape(item.shelf)}));
+      items = pendingOcr;
+      ocrResults.innerHTML = items.map((item, index) => '<label class="ocr-result"><input type="checkbox" data-ocr-index="' + index + '" checked><strong>' + item.name + '</strong><span>' + item.shelf + '</span></label>').join("");
+      ocrResults.style.display = "block";
+      $("#addOcrResults").style.display = items.length ? "block" : "none";
+      ocrStatus.textContent = "识别到 " + items.length + " 个包裹，请确认后加入清单。";
+    }
+    $("#importImage").addEventListener("click", () => ocrModal.classList.add("show"));
+    $("#closeOcr").addEventListener("click", () => ocrModal.classList.remove("show"));
+    ocrModal.addEventListener("click", (event) => { if (event.target === ocrModal) ocrModal.classList.remove("show"); });
+    $("#imageInput").addEventListener("change", async (event) => {
+      const file = event.target.files[0];
+      if (!file) return;
+      imagePreview.src = URL.createObjectURL(file);
+      imagePreview.style.display = "block";
+      ocrStatus.textContent = "正在识别图片中的文字，请稍候……";
+      ocrResults.style.display = "none";
+      $("#addOcrResults").style.display = "none";
+      try {
+        if (!window.Tesseract) throw new Error("ocr-unavailable");
+        const result = await Tesseract.recognize(file, "chi_sim+eng");
+        const text = result.data.text || "";
+        const items = ImportUtils.parse(text);
+        showOcrResults(items);
+        if (!items.length) ocrStatus.textContent = "未找到支持的取件码（如 A-302-8）。请使用包含取件信息的截图，订单商品截图不能推导取件码。";
+      } catch {
+        showOcrResults([]);
+        ocrStatus.textContent = "图片识别失败，请检查网络后重试。未添加任何包裹。";
+      }
+    });
+    $("#addOcrResults").addEventListener("click", () => {
+      pendingOcr.forEach((item, index) => {
+        if (ocrResults.querySelector('[data-ocr-index="' + index + '"]').checked) {
+          const parcel = { id: "ocr-" + Date.now() + "-" + index, shelf: item.shelf, name: item.name, found: false };
+          parcels.push(parcel);
+          const card = document.createElement("article");
+          card.className = "parcel imported";
+          card.dataset.id = parcel.id;
+          card.innerHTML = '<div class="product"><div>件</div></div><div class="parcel-info"><div class="parcel-top"><h3>' + parcel.name + '</h3><span class="deadline">待确认</span></div><div class="source">长截图识别 · 请核对</div><div class="find-row"><span class="shelf">' + parcel.shelf + '</span><button class="find" aria-pressed="false"><span class="check-box" aria-hidden="true"></span><span class="find-label">已找到</span></button></div></div>';
+          document.querySelector(".handoff").before(card);
+          bindParcelCard(card);
+        }
+      });
+      update();
+      ocrModal.classList.remove("show");
+    });
+    update();
+  </script>
+</body>
+</html>
