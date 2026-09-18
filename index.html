@@ -129,7 +129,7 @@
   <main class="page">
     <section>
       <div class="eyebrow">校园取件 · 同学体验版</div>
-      <p class="empty-note">首次打开会带入两件示例包裹；你可以识别长截图导入自己的包裹。清单和“已找到/等待合并”状态保存在本机浏览器中，换设备不会自动同步。</p>
+      <p class="empty-note">首次打开清单为空。识别并确认长截图后，包裹才会加入清单；数据保存在本机浏览器中，换设备不会自动同步。</p>
       <h1>下楼前，先知道<br>该找哪两件。</h1>
       <p class="lead">“便取件”不替代驿站和拼多多的扫码出库。到件通知负责提供货架位置与状态；商品名可来自平台通知、截图识别或用户确认，每一条都会标清来源。</p>
       <div class="principles">
@@ -141,9 +141,9 @@
         <div class="widget-label"><span>桌面小组件预览</span><span id="widgetState">自动更新</span></div>
         <section class="widget" aria-label="待取件桌面小组件">
           <small>便取件 · 南区菜鸟驿站</small>
-          <h2 id="widgetCount">待找 2 件</h2>
-          <p id="widgetMessage">今天 18:00 前取 · 下楼约 3 分钟</p>
-          <div class="widget-list" id="widgetList">A 区 A-302-8 · 洗衣液<br>B 区 B-127-6 · 抗菌浴巾</div>
+          <h2 id="widgetCount">暂无待取件</h2>
+          <p id="widgetMessage">导入到件截图后，这里会实时更新</p>
+          <div class="widget-list" id="widgetList">还没有包裹</div>
           <button id="widgetOpen">查看找件清单</button>
         </section>
       </div>
@@ -155,31 +155,15 @@
         <div class="title-row"><div class="app-name">便取件</div><div class="bell">♟</div></div>
         <section class="hero">
           <small>下楼前，先看清楚要找什么</small>
-          <h2>南区菜鸟驿站 · <span id="heroCount">2 件</span></h2>
+          <h2>南区菜鸟驿站 · <span id="heroCount">暂无包裹</span></h2>
           <div class="place">● 今天 18:00 前取 · 约 3 分钟 <button class="wait-toggle" id="waitToggle">等一等一起取</button></div>
         </section>
         <section class="import-card">
           <div><strong>导入订单长截图</strong><span>一次识别多个商品，先确认再加入清单</span></div>
           <button id="importImage">识别图片</button>
         </section>
-        <div class="section-title"><strong>先按货架号找件</strong><span id="foundCount">已找到 0 / 2</span></div>
-
-        <article class="parcel" data-id="soap">
-          <div class="product soap"><div class="soap-shape"></div></div>
-          <div class="parcel-info">
-            <div class="parcel-top"><h3>花漾茉莉洗衣液</h3><span class="deadline">18:00 前取</span></div>
-            <div class="source">日化 · 4斤装 · 示例数据</div>
-            <div class="find-row"><span class="shelf">A-302-8</span><button class="find" aria-pressed="false"><span class="check-box" aria-hidden="true"></span><span class="find-label">已找到</span></button></div>
-          </div>
-        </article>
-        <article class="parcel" data-id="towel">
-          <div class="product towel"><div class="towel-shape"></div></div>
-          <div class="parcel-info">
-            <div class="parcel-top"><h3>7A 抗菌浴巾</h3><span class="deadline">18:00 前取</span></div>
-            <div class="source">家纺 · 雾松灰 · 示例数据</div>
-            <div class="find-row"><span class="shelf">B-127-6</span><button class="find" aria-pressed="false"><span class="check-box" aria-hidden="true"></span><span class="find-label">已找到</span></button></div>
-          </div>
-        </article>
+        <div class="section-title"><strong>先按货架号找件</strong><span id="foundCount">已找到 0 / 0</span></div>
+        <div id="parcelList"></div>
 
         <section class="handoff">
           <strong id="handoffTitle">找到包裹后，再扫码出库</strong>
@@ -214,17 +198,13 @@
   <script src="import-utils.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
   <script>
-    const parcelSeed = [
-      { id: "soap", shelf: "A-302-8", name: "洗衣液", found: false },
-      { id: "towel", shelf: "B-127-6", name: "抗菌浴巾", found: false }
-    ];
-    const STORAGE_KEY = "bianqujian-parcels-v1";
+    const STORAGE_KEY = "bianqujian-parcels-v2";
     const WAIT_KEY = "bianqujian-wait-v1";
     let parcels;
     try {
       parcels = JSON.parse(localStorage.getItem(STORAGE_KEY) || "null");
     } catch { parcels = null; }
-    if (!Array.isArray(parcels) || !parcels.length) parcels = parcelSeed.map(p => ({ ...p }));
+    if (!Array.isArray(parcels)) parcels = [];
     let waitMode = localStorage.getItem(WAIT_KEY) === "1";
     const $ = (selector) => document.querySelector(selector);
     function update() {
@@ -233,15 +213,20 @@
       const found = parcels.filter(p => p.found).length;
       const remaining = parcels.length - found;
       $("#foundCount").textContent = `已找到 ${found} / ${parcels.length}`;
-      $("#heroCount").textContent = remaining ? `${remaining} 件待找` : "已全部找到";
-      $("#widgetCount").textContent = remaining ? `待找 ${remaining} 件` : "包裹已全部找到";
-      $("#widgetMessage").textContent = waitMode ? "正在等同地点的新包裹" : (remaining ? "今天 18:00 前取 · 下楼约 3 分钟" : "现在打开拼多多，扫码出库即可");
-      $("#widgetList").innerHTML = parcels.map(p => `${p.found ? "✓" : "•"} ${p.shelf} · ${p.name}`).join("<br>");
+      $("#heroCount").textContent = remaining ? `${remaining} 件待找` : (parcels.length ? "已全部找到" : "暂无包裹");
+      $("#widgetCount").textContent = remaining ? `待找 ${remaining} 件` : (parcels.length ? "包裹已全部找到" : "暂无待取件");
+      $("#widgetMessage").textContent = waitMode ? "正在等同地点的新包裹" : (remaining ? "今天 18:00 前取 · 下楼约 3 分钟" : "导入到件截图后，这里会实时更新");
+      $("#widgetList").innerHTML = parcels.length ? parcels.map(p => `${p.found ? "✓" : "•"} ${p.shelf} · ${p.name}`).join("<br>") : "还没有包裹";
       $("#widgetState").textContent = waitMode ? "等待合并" : (found ? "已同步" : "自动更新");
       $("#handoffTitle").textContent = remaining ? "找到包裹后，再扫码出库" : "两件都已找到，可以扫码出库";
       $("#handoffText").textContent = remaining ? "出库仍由你熟悉的拼多多完成。" : "打开拼多多，扫描包裹条形码即可。";
       $("#waitToggle").textContent = waitMode ? "取消等待" : "等一等一起取";
       $("#waitToggle").classList.toggle("active", waitMode);
+    }
+    function renderCards() {
+      const list = $("#parcelList");
+      list.innerHTML = parcels.length ? parcels.map(p => `<article class="parcel ${p.found ? "found" : "imported"}" data-id="${p.id}"><div class="product"><div>件</div></div><div class="parcel-info"><div class="parcel-top"><h3>${p.name}</h3><span class="deadline">待确认</span></div><div class="source">截图识别 · 请核对</div><div class="find-row"><span class="shelf">${p.shelf}</span><button class="find" aria-pressed="${p.found}"><span class="check-box" aria-hidden="true"></span><span class="find-label">已找到</span></button></div></div></article>`).join("") : '<div class="empty-note">还没有包裹，请先点击“识别图片”导入到件截图。</div>';
+      list.querySelectorAll(".parcel").forEach(bindParcelCard);
     }
     function bindParcelCard(card) {
       card.querySelector(".find").addEventListener("click", () => {
@@ -252,11 +237,7 @@
         update();
       });
     }
-    document.querySelectorAll(".parcel").forEach(card => {
-      const parcel = parcels.find(p => p.id === card.dataset.id);
-      if (parcel && parcel.found) card.classList.add("found");
-      bindParcelCard(card);
-    });
+    renderCards();
     const openModal = () => $("#modal").classList.add("show");
     $("#openPdd").addEventListener("click", openModal);
     $("#waitToggle").addEventListener("click", () => { waitMode = !waitMode; update(); });
@@ -304,14 +285,9 @@
         if (ocrResults.querySelector('[data-ocr-index="' + index + '"]').checked) {
           const parcel = { id: "ocr-" + Date.now() + "-" + index, shelf: item.shelf, name: item.name, found: false };
           parcels.push(parcel);
-          const card = document.createElement("article");
-          card.className = "parcel imported";
-          card.dataset.id = parcel.id;
-          card.innerHTML = '<div class="product"><div>件</div></div><div class="parcel-info"><div class="parcel-top"><h3>' + parcel.name + '</h3><span class="deadline">待确认</span></div><div class="source">长截图识别 · 请核对</div><div class="find-row"><span class="shelf">' + parcel.shelf + '</span><button class="find" aria-pressed="false"><span class="check-box" aria-hidden="true"></span><span class="find-label">已找到</span></button></div></div>';
-          document.querySelector(".handoff").before(card);
-          bindParcelCard(card);
         }
       });
+      renderCards();
       update();
       ocrModal.classList.remove("show");
     });
