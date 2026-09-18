@@ -129,7 +129,7 @@
   <main class="page">
     <section>
       <div class="eyebrow">校园取件 · 同学体验版</div>
-      <p class="empty-note">以下两件商品为示例。当前不读取手机通知，小组件和拼多多跳转仅作预览；刷新页面会重置清单。图片在浏览器识别，首次使用需要联网加载识别资源。</p>
+      <p class="empty-note">首次打开会带入两件示例包裹；你可以识别长截图导入自己的包裹。清单和“已找到/等待合并”状态保存在本机浏览器中，换设备不会自动同步。</p>
       <h1>下楼前，先知道<br>该找哪两件。</h1>
       <p class="lead">“便取件”不替代驿站和拼多多的扫码出库。到件通知负责提供货架位置与状态；商品名可来自平台通知、截图识别或用户确认，每一条都会标清来源。</p>
       <div class="principles">
@@ -218,10 +218,18 @@
       { id: "soap", shelf: "A-302-8", name: "洗衣液", found: false },
       { id: "towel", shelf: "B-127-6", name: "抗菌浴巾", found: false }
     ];
-    let parcels = parcelSeed;
-    let waitMode = false;
+    const STORAGE_KEY = "bianqujian-parcels-v1";
+    const WAIT_KEY = "bianqujian-wait-v1";
+    let parcels;
+    try {
+      parcels = JSON.parse(localStorage.getItem(STORAGE_KEY) || "null");
+    } catch { parcels = null; }
+    if (!Array.isArray(parcels) || !parcels.length) parcels = parcelSeed.map(p => ({ ...p }));
+    let waitMode = localStorage.getItem(WAIT_KEY) === "1";
     const $ = (selector) => document.querySelector(selector);
     function update() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(parcels));
+      localStorage.setItem(WAIT_KEY, waitMode ? "1" : "0");
       const found = parcels.filter(p => p.found).length;
       const remaining = parcels.length - found;
       $("#foundCount").textContent = `已找到 ${found} / ${parcels.length}`;
@@ -244,7 +252,11 @@
         update();
       });
     }
-    document.querySelectorAll(".parcel").forEach(bindParcelCard);
+    document.querySelectorAll(".parcel").forEach(card => {
+      const parcel = parcels.find(p => p.id === card.dataset.id);
+      if (parcel && parcel.found) card.classList.add("found");
+      bindParcelCard(card);
+    });
     const openModal = () => $("#modal").classList.add("show");
     $("#openPdd").addEventListener("click", openModal);
     $("#waitToggle").addEventListener("click", () => { waitMode = !waitMode; update(); });
