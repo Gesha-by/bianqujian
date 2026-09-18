@@ -18,3 +18,9 @@ test('首页不写死示例商品和示例取件点', () => {
   const html = fs.readFileSync('index.html', 'utf8');
   assert.doesNotMatch(html, /南区菜鸟驿站|洗衣液|抗菌浴巾|该找哪两件/);
 });
+test('介绍页和体验页可分离切换', () => {
+  const html = fs.readFileSync('index.html', 'utf8');
+  assert.match(html, /id="startExperience"/);
+  assert.match(html, /location\.hash === "#app"/);
+  assert.match(html, /id="backIntro"/);
+});

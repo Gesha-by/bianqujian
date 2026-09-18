@@ -43,9 +43,16 @@
     .widget-list { margin:18px 0 16px; padding-top:14px; border-top:1px solid #ffffff32; font-size:14px; line-height:1.8; }
     .widget button { width:100%; padding:11px; background:#fff; color:#17233d; border-radius:13px; font-size:14px; font-weight:800; }
     .phone {
+      display:none;
       background:#0d1427; padding:12px; border-radius:52px; box-shadow:0 35px 70px #17233d45;
       width:430px; min-height:830px;
     }
+    .page.app-mode { display:block; max-width:520px; }
+    .page.app-mode > section:first-child { display:none; }
+    .page.app-mode .phone { display:block; margin:auto; }
+    .experience-button, .back-button { display:inline-flex; border:0; border-radius:13px; padding:12px 20px; background:var(--blue); color:#fff; font-weight:800; cursor:pointer; }
+    .experience-button { margin-top:18px; }
+    .back-button { margin:0 0 12px; background:#e9efff; color:var(--blue); }
     .screen { overflow:hidden; min-height:806px; background:var(--canvas); border-radius:42px; padding:20px 18px 24px; position:relative; }
     .status { height:40px; display:flex; justify-content:space-between; align-items:center; padding:0 9px; font-size:13px; font-weight:800; }
     .title-row { display:flex; justify-content:space-between; align-items:center; padding:13px 9px 20px; }
@@ -131,6 +138,7 @@
       <div class="eyebrow">校园取件 · 同学体验版</div>
       <p class="empty-note">首次打开清单为空。识别并确认长截图后，包裹才会加入清单；数据会实时保存在本机浏览器中，换设备不会自动同步。</p>
       <h1>下楼前，先知道<br>该找什么。</h1>
+      <button class="experience-button" id="startExperience">去体验</button>
       <p class="lead">“便取件”不替代驿站和拼多多的扫码出库。到件通知负责提供货架位置与状态；商品名可来自平台通知、截图识别或用户确认，每一条都会标清来源。</p>
       <div class="principles">
         <div class="principle"><strong>按地点合并</strong><span>同一驿站的包裹，出门一次就能取完。</span></div>
@@ -151,6 +159,7 @@
 
     <section class="phone" aria-label="便取件手机界面">
       <div class="screen">
+        <button class="back-button" id="backIntro">返回介绍</button>
         <div class="status"><span>17:15</span><span>▮▮▮ 5G&nbsp;&nbsp;70%</span></div>
         <div class="title-row"><div class="app-name">便取件</div><div class="bell">♟</div></div>
         <section class="hero">
@@ -241,7 +250,17 @@
     const openModal = () => $("#modal").classList.add("show");
     $("#openPdd").addEventListener("click", openModal);
     $("#waitToggle").addEventListener("click", () => { waitMode = !waitMode; update(); });
-    $("#widgetOpen").addEventListener("click", () => document.querySelector(".phone").scrollIntoView({ behavior: "smooth", block: "center" }));
+    const page = document.querySelector(".page");
+    function setExperience(enabled) {
+      page.classList.toggle("app-mode", enabled);
+      if (enabled) history.replaceState(null, "", "#app");
+      else history.replaceState(null, "", location.pathname + location.search);
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+    $("#startExperience").addEventListener("click", () => setExperience(true));
+    $("#widgetOpen").addEventListener("click", () => setExperience(true));
+    $("#backIntro").addEventListener("click", () => setExperience(false));
+    if (location.hash === "#app") setExperience(true);
     $("#closeModal").addEventListener("click", () => $("#modal").classList.remove("show"));
     $("#modal").addEventListener("click", (event) => { if (event.target === $("#modal")) $("#modal").classList.remove("show"); });
     const ocrModal = $("#ocrModal");
