@@ -218,8 +218,8 @@
       $("#widgetMessage").textContent = waitMode ? "正在等同地点的新包裹" : (remaining ? "今天 18:00 前取 · 下楼约 3 分钟" : "导入到件截图后，这里会实时更新");
       $("#widgetList").innerHTML = parcels.length ? parcels.map(p => `${p.found ? "✓" : "•"} ${p.shelf} · ${p.name}`).join("<br>") : "还没有包裹";
       $("#widgetState").textContent = waitMode ? "等待合并" : (found ? "已同步" : "自动更新");
-      $("#handoffTitle").textContent = remaining ? "找到包裹后，再扫码出库" : "两件都已找到，可以扫码出库";
-      $("#handoffText").textContent = remaining ? "出库仍由你熟悉的拼多多完成。" : "打开拼多多，扫描包裹条形码即可。";
+      $("#handoffTitle").textContent = !parcels.length ? "导入包裹后开始找件" : (remaining ? "找到包裹后，再扫码出库" : "包裹都已找到，可以扫码出库");
+      $("#handoffText").textContent = !parcels.length ? "点击上方“识别图片”，导入到件通知长截图。" : (remaining ? "出库仍由你熟悉的拼多多完成。" : "打开拼多多，扫描包裹条形码即可。" );
       $("#waitToggle").textContent = waitMode ? "取消等待" : "等一等一起取";
       $("#waitToggle").classList.toggle("active", waitMode);
     }

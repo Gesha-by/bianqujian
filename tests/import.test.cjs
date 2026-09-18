@@ -10,3 +10,7 @@ test('网页清单会保存到本机，刷新后不丢失', () => {
   assert.match(html, /localStorage\.setItem\(STORAGE_KEY/);
   assert.match(html, /localStorage\.getItem\(STORAGE_KEY/);
 });
+test('空清单不会误显示为全部找到', () => {
+  const html = fs.readFileSync('index.html', 'utf8');
+  assert.match(html, /!parcels\.length \? "导入包裹后开始找件"/);
+});
