@@ -14,3 +14,7 @@ test('空清单不会误显示为全部找到', () => {
   const html = fs.readFileSync('index.html', 'utf8');
   assert.match(html, /!parcels\.length \? "导入包裹后开始找件"/);
 });
+test('首页不写死示例商品和示例取件点', () => {
+  const html = fs.readFileSync('index.html', 'utf8');
+  assert.doesNotMatch(html, /南区菜鸟驿站|洗衣液|抗菌浴巾|该找哪两件/);
+});
