@@ -14,6 +14,9 @@ test('安卓 MVP 工程包含入口、清单和本地持久化逻辑', () => {
   assert.match(code, /未提供商品名/);
   assert.match(code, /商品名待确认/);
   assert.match(code, /productArea/);
+  assert.match(code, /saveImportedImage/);
+  assert.match(code, /BitmapFactory.decodeFile/);
+  assert.match(code, /imagePath: String/);
   assert.match(code, /FLAG_DEBUGGABLE/);
   assert.match(code, /completedList/);
   assert.match(code, /IN_TRANSIT/);
