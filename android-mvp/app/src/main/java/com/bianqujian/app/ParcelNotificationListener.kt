@@ -23,8 +23,18 @@ class ParcelNotificationListener : NotificationListenerService() {
             val code = matcher.group().replace(Regex("\\s+"), "").replace(Regex("-+"), "-")
             val index = rows.indexOfFirst { it.startsWith("$code|") }
             val location = extractLocation(text)
-            if (index < 0) { rows.add("$code|${extractName(text)}|${isCompleted}|READY|拼多多|${location}"); changed = true }
-            else if (isCompleted && !rows[index].endsWith("|true")) { val fields = rows[index].split("|"); rows[index] = "${fields[0]}|${fields.getOrElse(1) { "通知识别" }}|true"; changed = true }
+            if (index < 0) {
+                rows.add("$code|${extractName(text)}|${isCompleted}|${if (isCompleted) "PICKED_UP" else "READY"}|拼多多|${location}")
+                changed = true
+            } else {
+                val fields = rows[index].split("|").toMutableList()
+                while (fields.size < 6) fields.add(if (fields.size == 1) "通知识别" else if (fields.size == 2) "false" else if (fields.size == 3) "READY" else if (fields.size == 4) "截图识别" else "未识别位置")
+                if (isCompleted) { fields[2] = "true"; fields[3] = "PICKED_UP" }
+                fields[4] = "拼多多"
+                if (location != "未识别位置") fields[5] = location
+                val updated = fields.joinToString("|")
+                if (updated != rows[index]) { rows[index] = updated; changed = true }
+            }
         }
         if (changed) { prefs.edit().putString("items", rows.joinToString("\n")).apply(); sendBroadcast(Intent(ACTION_UPDATED).setPackage(packageName)) }
     }

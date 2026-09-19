@@ -34,6 +34,9 @@ test('安卓 MVP 工程包含入口、清单和本地持久化逻辑', () => {
   assert.match(listener, /已出库\|已取件\|已领取/);
   assert.match(listener, /com\.xunmeng\.pinduoduo/);
   assert.match(listener, /extractLocation/);
+  assert.match(listener, /PICKED_UP/);
+  assert.match(listener, /while \(fields\.size < 6\)/);
+  assert.match(listener, /fields\[5\] = location/);
   assert.match(code, /location: String/);
   assert.match(code, /未识别位置/);
 });
