@@ -9,6 +9,7 @@ import android.provider.OpenableColumns
 import android.view.Gravity
 import android.view.ViewGroup
 import android.widget.*
+import android.graphics.drawable.GradientDrawable
 import java.util.regex.Pattern
 
 data class Parcel(val code: String, val name: String = "未提供商品名", var found: Boolean = false)
@@ -23,13 +24,21 @@ class MainActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) { super.onCreate(savedInstanceState); load(); render() }
 
     private fun render() {
-        val root = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(32, 36, 32, 24); setBackgroundColor(Color.rgb(246,248,253)) }
-        val title = TextView(this).apply { text = "便取件"; textSize = 30f; setTextColor(Color.rgb(20,35,70)); setTypeface(null, 1) }
-        summary = TextView(this).apply { textSize = 16f; setPadding(0, 12, 0, 18) }
-        val import = Button(this).apply { text = "导入到件长截图"; setOnClickListener { chooseText() } }
+        val root = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(28, 34, 28, 24); setBackgroundColor(Color.rgb(246,248,253)) }
+        val back = Button(this).apply { text = "返回介绍"; setTextColor(Color.rgb(49,92,255)); background = rounded(Color.rgb(233,239,255), 18f); setOnClickListener { finish() } }
+        val title = TextView(this).apply { text = "便取件"; textSize = 30f; setTextColor(Color.rgb(20,35,70)); setTypeface(null, 1); setPadding(0, 22, 0, 8) }
+        val hero = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(22, 20, 22, 20); background = rounded(Color.rgb(73,105,247), 28f) }
+        hero.addView(TextView(this).apply { text = "下楼前，先看清楚要找什么"; textSize = 14f; setTextColor(Color.WHITE) })
+        hero.addView(TextView(this).apply { text = "我的取件点 · 暂无包裹"; textSize = 25f; setTextColor(Color.WHITE); setTypeface(null, 1); setPadding(0, 8, 0, 14) })
+        hero.addView(TextView(this).apply { text = "● 暂无待取件"; textSize = 13f; setTextColor(Color.WHITE); background = rounded(Color.argb(45,255,255,255), 18f); setPadding(12, 9, 12, 9) })
+        val import = Button(this).apply { text = "导入到件长截图"; textSize = 16f; setTextColor(Color.rgb(25,38,70)); background = rounded(Color.WHITE, 18f); setOnClickListener { chooseText() }; setPadding(16, 18, 16, 18) }
+        summary = TextView(this).apply { textSize = 16f; setTextColor(Color.rgb(20,35,70)); setPadding(0, 22, 0, 10) }
         list = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
-        root.addView(title); root.addView(summary); root.addView(import); root.addView(list, LinearLayout.LayoutParams(-1, 0, 1f)); setContentView(root); refresh()
+        val handoff = TextView(this).apply { text = "导入包裹后开始找件\n\n找到包裹后，再打开拼多多扫码出库"; textSize = 16f; setTextColor(Color.WHITE); setPadding(20, 20, 20, 20); background = rounded(Color.rgb(20,35,70), 24f) }
+        root.addView(back); root.addView(title); root.addView(hero); root.addView(import, LinearLayout.LayoutParams(-1, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = 14 }); root.addView(summary); root.addView(list, LinearLayout.LayoutParams(-1, 0, 1f)); root.addView(handoff); setContentView(root); refresh()
     }
+
+    private fun rounded(color: Int, radius: Float) = GradientDrawable().apply { setColor(color); cornerRadius = radius }
 
     private fun chooseText() { startActivityForResult(Intent(Intent.ACTION_OPEN_DOCUMENT).apply { type = "text/plain"; addCategory(Intent.CATEGORY_OPENABLE) }, 9) }
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) { super.onActivityResult(requestCode, resultCode, data); if (requestCode == 9 && resultCode == RESULT_OK) data?.data?.let { importText(it) } }
