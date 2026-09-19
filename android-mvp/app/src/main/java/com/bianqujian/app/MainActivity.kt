@@ -146,7 +146,13 @@ class MainActivity : Activity() {
         catch (_: Exception) { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://sj.qq.com/app/search?key=拼多多"))) }
     }
     private fun isNotificationAccessEnabled(): Boolean = Settings.Secure.getString(contentResolver, "enabled_notification_listeners")?.contains(packageName) == true
-    private fun simulateArrival() { if (parcels.none { it.code == "A-302-8" }) parcels.add(Parcel("A-302-8", "洗衣液")); save(); refresh(); Toast.makeText(this, "已加入一条模拟到件数据", Toast.LENGTH_SHORT).show() }
+    private fun simulateArrival() {
+        val code = "A-302-8"
+        val index = parcels.indexOfFirst { it.code == code }
+        val item = Parcel(code, "洗衣液", false, ParcelStatus.READY, "模拟到件", "妈妈驿站", "普通快递", "圆通", "YT000000000000", SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.CHINA).format(Date()), "")
+        if (index < 0) parcels.add(item) else parcels[index] = item
+        save(); refresh(); Toast.makeText(this, "已加入一条模拟到件数据", Toast.LENGTH_SHORT).show()
+    }
     private fun simulatePickedUpNotification() {
         val code = "A-302-8"
         val index = parcels.indexOfFirst { it.code == code }
