@@ -23,6 +23,9 @@ import android.content.Context
 import android.content.IntentFilter
 import android.provider.Settings
 import android.content.pm.ApplicationInfo
+import android.content.pm.PackageManager
+import android.Manifest
+import android.location.LocationManager
 import android.graphics.drawable.GradientDrawable
 import java.util.regex.Pattern
 import java.text.SimpleDateFormat
@@ -46,6 +49,7 @@ class MainActivity : Activity() {
     private lateinit var completedList: LinearLayout
     private lateinit var statusTabs: LinearLayout
     private var selectedStatus = ParcelStatus.READY
+    private var locationSummary = "定位未授权，无法估算取件时间"
     private lateinit var summary: TextView
     private val storage by lazy { getSharedPreferences("parcels", MODE_PRIVATE) }
     private val codePattern = Pattern.compile("(?<![A-Z0-9])[A-Z]{1,3}\\s*[-—–－]?\\s*\\d{1,4}(?:\\s*[-—–－]\\s*\\d{1,4}){1,2}(?![A-Z0-9])")
@@ -67,13 +71,14 @@ class MainActivity : Activity() {
         val hero = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(18, 17, 18, 17); background = rounded(Color.rgb(31,45,70), 28f) }
         hero.addView(TextView(this).apply { text = "下楼前，先看清楚要找什么"; textSize = 12f; setTextColor(Color.WHITE) })
         hero.addView(TextView(this).apply { text = "我的取件点 · ${parcels.firstOrNull { it.location != "未识别位置" }?.location ?: "待识别"}"; textSize = 20f; setTextColor(Color.WHITE); setTypeface(null, 1); setPadding(0, 7, 0, 11) })
-        hero.addView(TextView(this).apply { text = "● 今天取件 · 预计 3 分钟"; textSize = 11f; setTextColor(Color.WHITE); background = rounded(Color.argb(45,255,255,255), 16f); setPadding(10, 7, 10, 7) })
+        hero.addView(TextView(this).apply { text = "● $locationSummary"; textSize = 11f; setTextColor(Color.WHITE); background = rounded(Color.argb(45,255,255,255), 16f); setPadding(10, 7, 10, 7) })
         val import = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; setPadding(14, 11, 8, 11); background = rounded(Color.WHITE, 22f) }
         import.addView(TextView(this).apply { text = "导入订单长截图\n识别后确认，再加入找件清单"; textSize = 12f; setTextColor(Color.rgb(42,55,82)); layoutParams = LinearLayout.LayoutParams(0, -2, 1f) })
         import.addView(Button(this).apply { text = "识别图片"; textSize = 11f; setTextColor(Color.rgb(66,99,235)); background = rounded(Color.rgb(237,241,255), 16f); elevation = 0f; stateListAnimator = null; setOnClickListener { chooseText() } })
         val simulate = Button(this).apply { text = "模拟到件数据（测试）"; textSize = 10f; setTextColor(Color.rgb(104,119,146)); background = rounded(Color.rgb(242,245,250), 16f); elevation = 0f; stateListAnimator = null; setOnClickListener { simulateArrival() }; visibility = if ((applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0) View.VISIBLE else View.GONE }
         val simulatePicked = Button(this).apply { text = "模拟拼多多已取件通知（测试）"; textSize = 10f; setTextColor(Color.rgb(104,119,146)); background = rounded(Color.rgb(242,245,250), 16f); elevation = 0f; stateListAnimator = null; setOnClickListener { simulatePickedUpNotification() }; visibility = if ((applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0) View.VISIBLE else View.GONE }
         val autoSync = Button(this).apply { text = if (isNotificationAccessEnabled()) "通知自动同步已开启" else "开启通知自动同步"; textSize = 11f; setTextColor(Color.rgb(66,99,235)); background = rounded(Color.rgb(237,241,255), 16f); elevation = 0f; stateListAnimator = null; setOnClickListener { startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)) } }
+        val locationButton = Button(this).apply { text = if (hasLocationPermission()) "定位已授权 · 匹配附近驿站" else "授权定位 · 匹配附近驿站"; textSize = 11f; setTextColor(Color.rgb(66,99,235)); background = rounded(Color.rgb(237,241,255), 16f); elevation = 0f; stateListAnimator = null; setOnClickListener { requestLocationPermission() } }
         statusTabs = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; setPadding(0, 14, 0, 4) }
         list = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
         completedList = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
@@ -82,7 +87,7 @@ class MainActivity : Activity() {
         val handoffNote = TextView(this).apply { text = "取到包裹后，再进行最后一步"; textSize = 12f; setTextColor(Color.rgb(92,103,126)); setPadding(2, 16, 2, 6) }
         val handoff = Button(this).apply { text = "打开拼多多扫描取件"; textSize = 14f; setTextColor(Color.WHITE); background = rounded(Color.rgb(23,35,61), 24f); elevation = 0f; stateListAnimator = null; setPadding(16, 16, 16, 16); setOnClickListener { choosePddOpenMode() } }
         val content = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(0, 0, 0, 12) }
-        content.addView(title); content.addView(hero); content.addView(import, LinearLayout.LayoutParams(-1, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = 14 }); content.addView(autoSync, LinearLayout.LayoutParams(-1, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = 7 }); content.addView(simulate, LinearLayout.LayoutParams(-1, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = 7 }); content.addView(simulatePicked, LinearLayout.LayoutParams(-1, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = 7 }); content.addView(statusTabs); content.addView(summary); content.addView(list)
+        content.addView(title); content.addView(hero); content.addView(import, LinearLayout.LayoutParams(-1, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = 14 }); content.addView(autoSync, LinearLayout.LayoutParams(-1, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = 7 }); content.addView(locationButton, LinearLayout.LayoutParams(-1, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = 7 }); content.addView(simulate, LinearLayout.LayoutParams(-1, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = 7 }); content.addView(simulatePicked, LinearLayout.LayoutParams(-1, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = 7 }); content.addView(statusTabs); content.addView(summary); content.addView(list)
         root.addView(ScrollView(this).apply { isFillViewport = true; addView(content) }, LinearLayout.LayoutParams(-1, 0, 1f)); root.addView(handoffNote); root.addView(handoff, LinearLayout.LayoutParams(-1, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = 6 }); setContentView(root); refresh()
     }
 
@@ -152,6 +157,17 @@ class MainActivity : Activity() {
         catch (_: Exception) { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://sj.qq.com/app/search?key=拼多多"))) }
     }
     private fun isNotificationAccessEnabled(): Boolean = Settings.Secure.getString(contentResolver, "enabled_notification_listeners")?.contains(packageName) == true
+    private fun hasLocationPermission() = checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED || checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
+    private fun requestLocationPermission() {
+        if (hasLocationPermission()) {
+            locationSummary = "定位已授权 · 附近驿站营业时间待查询"
+            render()
+        } else requestPermissions(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION), 20)
+    }
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == 20) { locationSummary = if (grantResults.any { it == PackageManager.PERMISSION_GRANTED }) "定位已授权 · 附近驿站营业时间待查询" else "未授权定位，无法估算取件时间"; render() }
+    }
     private fun simulateArrival() {
         val code = "A-302-8"
         val index = parcels.indexOfFirst { it.code == code }
