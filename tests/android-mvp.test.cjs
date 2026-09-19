@@ -16,4 +16,6 @@ test('安卓 MVP 工程包含入口、清单和本地持久化逻辑', () => {
   const manifest = fs.readFileSync('android-mvp/app/src/main/AndroidManifest.xml', 'utf8');
   assert.match(manifest, /BIND_NOTIFICATION_LISTENER_SERVICE/);
   assert.ok(fs.existsSync('android-mvp/app/src/main/java/com/bianqujian/app/ParcelNotificationListener.kt'));
+  const listener = fs.readFileSync('android-mvp/app/src/main/java/com/bianqujian/app/ParcelNotificationListener.kt', 'utf8');
+  assert.match(listener, /已出库\|已取件\|已领取/);
 });
