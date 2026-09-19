@@ -31,12 +31,8 @@ test('安卓 MVP 工程包含入口、清单和本地持久化逻辑', () => {
   assert.match(manifest, /BIND_NOTIFICATION_LISTENER_SERVICE/);
   assert.match(manifest, /<queries>/);
   assert.match(manifest, /android:name="com\.xunmeng\.pinduoduo"/);
-  assert.match(manifest, /BIND_ACCESSIBILITY_SERVICE/);
-  assert.ok(fs.existsSync('android-mvp/app/src/main/java/com/bianqujian/app/PddAccessibilityService.kt'));
-  const accessibility = fs.readFileSync('android-mvp/app/src/main/java/com/bianqujian/app/PddAccessibilityService.kt', 'utf8');
-  assert.match(accessibility, /多多代收点/);
-  assert.match(accessibility, /ACTION_CLICK/);
-  assert.match(code, /ACTION_ACCESSIBILITY_SETTINGS/);
+  assert.match(code, /pinduoduo:\/\/com\.xunmeng\.pinduoduo\/https:\/\/m\.pinduoduo\.net\/mdkd\/identificationCode/);
+  assert.doesNotMatch(manifest, /BIND_ACCESSIBILITY_SERVICE/);
   assert.ok(fs.existsSync('android-mvp/app/src/main/java/com/bianqujian/app/ParcelNotificationListener.kt'));
   const listener = fs.readFileSync('android-mvp/app/src/main/java/com/bianqujian/app/ParcelNotificationListener.kt', 'utf8');
   assert.match(listener, /已出库\|已取件\|已领取/);
