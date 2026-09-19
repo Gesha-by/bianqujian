@@ -35,11 +35,12 @@ class MainActivity : Activity() {
         hero.addView(TextView(this).apply { text = "下楼前，先看清楚要找什么"; textSize = 14f; setTextColor(Color.WHITE) })
         hero.addView(TextView(this).apply { text = "我的取件点 · 暂无包裹"; textSize = 25f; setTextColor(Color.WHITE); setTypeface(null, 1); setPadding(0, 8, 0, 14) })
         hero.addView(TextView(this).apply { text = "● 暂无待取件"; textSize = 13f; setTextColor(Color.WHITE); background = rounded(Color.argb(45,255,255,255), 18f); setPadding(12, 9, 12, 9) })
-        val import = Button(this).apply { text = "如果未识别到包裹，请点击导入到件截图（支持长截图）"; textSize = 15f; setTextColor(Color.rgb(25,38,70)); background = rounded(Color.WHITE, 18f); setOnClickListener { chooseText() }; setPadding(16, 18, 16, 18) }
+        val importNote = TextView(this).apply { text = "如果识别不到包裹，请点击下方导入到件截图，支持长截图"; textSize = 13f; setTextColor(Color.rgb(92,107,135)); setPadding(4, 16, 4, 6) }
+        val import = Button(this).apply { text = "到件截图"; textSize = 16f; setTextColor(Color.rgb(25,38,70)); background = rounded(Color.WHITE, 18f); setOnClickListener { chooseText() }; setPadding(16, 18, 16, 18) }
         summary = TextView(this).apply { textSize = 16f; setTextColor(Color.rgb(20,35,70)); setPadding(0, 22, 0, 10) }
         list = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
         val handoff = TextView(this).apply { text = "导入包裹后开始找件\n\n找到包裹后，再打开拼多多扫码出库"; textSize = 16f; setTextColor(Color.WHITE); setPadding(20, 20, 20, 20); background = rounded(Color.rgb(20,35,70), 24f) }
-        root.addView(title); root.addView(hero); root.addView(import, LinearLayout.LayoutParams(-1, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = 14 }); root.addView(summary); root.addView(list, LinearLayout.LayoutParams(-1, 0, 1f)); root.addView(handoff); setContentView(root); refresh()
+        root.addView(title); root.addView(hero); root.addView(importNote); root.addView(import, LinearLayout.LayoutParams(-1, ViewGroup.LayoutParams.WRAP_CONTENT)); root.addView(summary); root.addView(list, LinearLayout.LayoutParams(-1, 0, 1f)); root.addView(handoff); setContentView(root); refresh()
     }
 
     private fun rounded(color: Int, radius: Float) = GradientDrawable().apply { setColor(color); cornerRadius = radius }
