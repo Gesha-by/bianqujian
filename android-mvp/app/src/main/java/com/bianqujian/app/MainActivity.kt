@@ -87,22 +87,13 @@ class MainActivity : Activity() {
     private fun choosePddOpenMode() {
         val saved = storage.getString("pdd_open_mode", null)
         if (saved == "always") { openPdd(); return }
-        val labels = arrayOf("以后都打开", "仅打开一次", "不打开")
-        var selected = 1
-        val choices = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(20), 0, dp(20), 0) }
-        val buttons = mutableListOf<TextView>()
-        labels.forEachIndexed { index, label ->
-            val row = TextView(this).apply { text = label; textSize = 15f; gravity = Gravity.CENTER_VERTICAL; setTextColor(Color.rgb(23,35,61)); setPadding(dp(16), dp(14), dp(16), dp(14)); background = rounded(Color.rgb(246,248,252), 16f); setOnClickListener { selected = index; buttons.forEachIndexed { i, item -> item.background = rounded(if (i == selected) Color.rgb(232,238,255) else Color.rgb(246,248,252), 16f); item.setTextColor(if (i == selected) Color.rgb(66,99,235) else Color.rgb(23,35,61)) } } }
-            buttons.add(row); choices.addView(row, LinearLayout.LayoutParams(-1, dp(48)).apply { bottomMargin = dp(8) })
-        }
-        val remember = CheckBox(this).apply { text = "记住此设置"; textSize = 12f; setTextColor(Color.rgb(104,119,146)); buttonTintList = android.content.res.ColorStateList.valueOf(Color.rgb(66,99,235)); setPadding(0, dp(6), 0, 0) }
-        choices.addView(remember, LinearLayout.LayoutParams(-1, dp(42)))
-        buttons[1].performClick()
-        AlertDialog.Builder(this).setTitle("打开拼多多扫描取件").setMessage("请选择这次如何处理取件操作").setView(choices).setNegativeButton("取消", null).setPositiveButton("确定") { _, _ ->
-            when (selected) {
-                0 -> { if (remember.isChecked) storage.edit().putString("pdd_open_mode", "always").apply(); openPdd() }
-                1 -> { if (remember.isChecked) storage.edit().putString("pdd_open_mode", "once").apply(); openPdd() }
-                else -> Unit
+        val labels = arrayOf("记住此设置", "以后都打开", "仅打开一次", "不打开")
+        AlertDialog.Builder(this).setTitle("打开拼多多扫描取件").setItems(labels) { dialog, which ->
+            when (which) {
+                0 -> { storage.edit().putString("pdd_open_mode", "remember").apply(); openPdd(); dialog.dismiss() }
+                1 -> { storage.edit().putString("pdd_open_mode", "always").apply(); openPdd(); dialog.dismiss() }
+                2 -> { openPdd(); dialog.dismiss() }
+                else -> dialog.dismiss()
             }
         }.show()
     }
