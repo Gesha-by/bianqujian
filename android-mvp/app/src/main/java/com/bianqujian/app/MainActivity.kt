@@ -85,8 +85,6 @@ class MainActivity : Activity() {
     private fun rounded(color: Int, radius: Float) = GradientDrawable().apply { setColor(color); cornerRadius = radius }
     private fun dp(value: Int) = (value * resources.displayMetrics.density).toInt()
     private fun choosePddOpenMode() {
-        val saved = storage.getString("pdd_open_mode", null)
-        if (saved == "always") { openPdd(); return }
         val labels = arrayOf("记住此设置", "以后都打开", "仅打开一次", "不打开")
         AlertDialog.Builder(this).setTitle("打开拼多多扫描取件").setItems(labels) { dialog, which ->
             when (which) {
