@@ -5,6 +5,9 @@ import android.os.Bundle
 import android.content.Intent
 import android.graphics.Color
 import android.net.Uri
+import com.google.mlkit.vision.common.InputImage
+import com.google.mlkit.vision.text.chinese.ChineseTextRecognizerOptions
+import com.google.mlkit.vision.text.TextRecognition
 import android.provider.OpenableColumns
 import android.view.Gravity
 import android.view.ViewGroup
@@ -40,9 +43,9 @@ class MainActivity : Activity() {
 
     private fun rounded(color: Int, radius: Float) = GradientDrawable().apply { setColor(color); cornerRadius = radius }
 
-    private fun chooseText() { startActivityForResult(Intent(Intent.ACTION_OPEN_DOCUMENT).apply { type = "text/plain"; addCategory(Intent.CATEGORY_OPENABLE) }, 9) }
-    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) { super.onActivityResult(requestCode, resultCode, data); if (requestCode == 9 && resultCode == RESULT_OK) data?.data?.let { importText(it) } }
-    private fun importText(uri: Uri) { val text = contentResolver.openInputStream(uri)?.bufferedReader()?.use { it.readText() } ?: return; val found = codePattern.matcher(text); var added = 0; while (found.find()) { val code = found.group().replace(" ", "-"); if (parcels.none { it.code == code }) { parcels.add(Parcel(code)); added++ } }; save(); refresh(); Toast.makeText(this, "已导入 $added 个取件码", Toast.LENGTH_SHORT).show() }
+    private fun chooseText() { startActivityForResult(Intent(Intent.ACTION_OPEN_DOCUMENT).apply { type = "image/*"; addCategory(Intent.CATEGORY_OPENABLE); putExtra(Intent.EXTRA_ALLOW_MULTIPLE, false) }, 9) }
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) { super.onActivityResult(requestCode, resultCode, data); if (requestCode == 9 && resultCode == RESULT_OK) data?.data?.let { importImage(it) } }
+    private fun importImage(uri: Uri) { val image = InputImage.fromFilePath(this, uri); val recognizer = TextRecognition.getClient(ChineseTextRecognizerOptions.Builder().build()); recognizer.process(image).addOnSuccessListener { result -> val found = codePattern.matcher(result.text); var added = 0; while (found.find()) { val code = found.group().replace(" ", "-"); if (parcels.none { it.code == code }) { parcels.add(Parcel(code)); added++ } }; save(); refresh(); Toast.makeText(this, "识别完成，已导入 $added 个取件码", Toast.LENGTH_SHORT).show() }.addOnFailureListener { Toast.makeText(this, "图片识别失败，请重试", Toast.LENGTH_LONG).show() } }
     private fun refresh() { list.removeAllViews(); val found = parcels.count { it.found }; summary.text = if (parcels.isEmpty()) "暂无包裹，请先导入到件截图" else "已找到 $found / ${parcels.size}"; parcels.forEach { parcel -> val row = CheckBox(this).apply { text = "${parcel.code} · ${parcel.name}"; textSize = 17f; isChecked = parcel.found; setPadding(8, 18, 8, 18); setOnCheckedChangeListener { _, checked -> parcel.found = checked; save(); summary.text = "已找到 ${parcels.count { it.found }} / ${parcels.size}" } }; list.addView(row) } }
     private fun save() { storage.edit().putString("items", parcels.joinToString("\n") { "${it.code}|${it.name}|${it.found}" }).apply() }
     private fun load() { storage.getString("items", "")?.lines()?.filter { it.isNotBlank() }?.forEach { val p = it.split("|"); if (p.size >= 3) parcels.add(Parcel(p[0], p[1], p[2] == "true")) } }
