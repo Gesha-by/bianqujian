@@ -18,7 +18,6 @@ test('安卓 MVP 工程包含入口、清单和本地持久化逻辑', () => {
   assert.match(code, /待取件/);
   assert.match(code, /已取件/);
   assert.match(code, /已取消/);
-  assert.match(code, /选择包裹状态/);
   assert.match(code, /打开拼多多扫描取件/);
   assert.match(code, /getLaunchIntentForPackage\("com\.xunmeng\.pinduoduo"\)/);
   assert.doesNotMatch(code, /是否跳转到拼多多/);
@@ -49,7 +48,9 @@ test('安卓 MVP 工程包含入口、清单和本地持久化逻辑', () => {
   assert.match(code, /trackingNumber: String/);
   assert.match(code, /ACTION_NOTIFICATION_LISTENER_SETTINGS/);
   assert.match(code, /isNotificationAccessEnabled/);
-  assert.match(code, /自动同步中/);
+  assert.doesNotMatch(code, /手动调整/);
+  assert.doesNotMatch(code, /修改状态/);
+  assert.doesNotMatch(code, /chooseStatus/);
   const deploy = fs.readFileSync('android-mvp/install-restart.ps1', 'utf8');
   assert.match(deploy, /assembleDebug/);
   assert.match(deploy, /install -r/);

@@ -157,11 +157,9 @@ class MainActivity : Activity() {
         info.addView(TextView(this).apply { text = "${parcel.parcelType} · ${parcel.carrier}"; textSize = 11f; setTextColor(Color.rgb(104,119,146)); setPadding(0, 5, 0, 4) })
         info.addView(TextView(this).apply { text = "${parcel.source} · ${parcel.location} · ${parcel.updatedAt}"; textSize = 10f; setTextColor(Color.rgb(104,119,146)); setPadding(0, 0, 0, 6) })
         info.addView(TextView(this).apply { text = parcel.code; textSize = 16f; setTypeface(null, 1); setTextColor(Color.rgb(49,76,126)) })
-        val action = Button(this).apply { text = if (parcel.source == "拼多多") "自动同步中" else "手动调整"; textSize = 11f; setSingleLine(true); minWidth = 0; minimumWidth = 0; setTextColor(Color.rgb(64,81,112)); background = rounded(Color.rgb(246,248,252), 18f); elevation = 0f; stateListAnimator = null; setPadding(dp(6), dp(4), dp(6), dp(4)); setOnClickListener { if (parcel.source != "拼多多") chooseStatus(parcel) else Toast.makeText(this@MainActivity, "拼多多通知会自动同步状态", Toast.LENGTH_SHORT).show() }; layoutParams = LinearLayout.LayoutParams(dp(94), dp(42)).apply { leftMargin = dp(8) } }
-        card.addView(product); card.addView(info); card.addView(action)
+        card.addView(product); card.addView(info)
         container.addView(card, LinearLayout.LayoutParams(-1, ViewGroup.LayoutParams.WRAP_CONTENT).apply { bottomMargin = 12 })
     }
-    private fun chooseStatus(parcel: Parcel) { val labels = arrayOf("运输中", "待取件", "已取件", "已取消"); AlertDialog.Builder(this).setTitle("选择包裹状态").setSingleChoiceItems(labels, parcel.status.ordinal) { dialog, which -> parcel.status = ParcelStatus.values()[which]; parcel.found = parcel.status == ParcelStatus.PICKED_UP; save(); refresh(); dialog.dismiss() }.show() }
     private fun save() { storage.edit().putString("items", parcels.joinToString("\n") { "${it.code}|${it.name}|${it.found}|${it.status.name}|${it.source}|${it.location}|${it.parcelType}|${it.carrier}|${it.trackingNumber}|${it.updatedAt}" }).apply() }
     private fun load() { storage.getString("items", "")?.lines()?.filter { it.isNotBlank() }?.forEach { val p = it.split("|"); if (p.size >= 3) parcels.add(Parcel(p[0], p[1], p[2] == "true", if (p.size >= 4) runCatching { ParcelStatus.valueOf(p[3]) }.getOrDefault(if (p[2] == "true") ParcelStatus.PICKED_UP else ParcelStatus.READY) else if (p[2] == "true") ParcelStatus.PICKED_UP else ParcelStatus.READY, p.getOrElse(4) { "截图识别" }, p.getOrElse(5) { "未识别位置" }, p.getOrElse(6) { "未知类型" }, p.getOrElse(7) { "未知快递" }, p.getOrElse(8) { "未知运单号" }, p.getOrElse(9) { "未知时间" })) } }
 }
