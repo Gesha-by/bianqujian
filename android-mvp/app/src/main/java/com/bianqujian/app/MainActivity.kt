@@ -25,7 +25,7 @@ import android.content.pm.ApplicationInfo
 import android.graphics.drawable.GradientDrawable
 import java.util.regex.Pattern
 
-enum class ParcelStatus { WAITING, STORED, PICKED_UP, CANCELLED }
+enum class ParcelStatus { IN_TRANSIT, READY, PICKED_UP, CANCELLED }
 data class Parcel(val code: String, val name: String = "未提供商品名", var found: Boolean = false, var status: ParcelStatus = ParcelStatus.WAITING)
 
 class MainActivity : Activity() {
@@ -33,7 +33,7 @@ class MainActivity : Activity() {
     private lateinit var list: LinearLayout
     private lateinit var completedList: LinearLayout
     private lateinit var statusTabs: LinearLayout
-    private var selectedStatus = ParcelStatus.WAITING
+    private var selectedStatus = ParcelStatus.READY
     private lateinit var summary: TextView
     private val storage by lazy { getSharedPreferences("parcels", MODE_PRIVATE) }
     private val codePattern = Pattern.compile("(?<![A-Z0-9])[A-Z]{1,3}\\s*[-—–－]?\\s*\\d{1,4}\\s*[-—–－]\\s*\\d{1,4}(?![A-Z0-9])")
@@ -61,13 +61,15 @@ class MainActivity : Activity() {
         summary = TextView(this).apply { textSize = 14f; setTextColor(Color.rgb(23,35,61)); setTypeface(null, 1); setPadding(12, 18, 2, 8) }
         val handoffNote = TextView(this).apply { text = "取到包裹后，再进行最后一步"; textSize = 12f; setTextColor(Color.rgb(92,103,126)); setPadding(2, 16, 2, 6) }
         val handoff = Button(this).apply { text = "打开拼多多扫描取件"; textSize = 14f; setTextColor(Color.WHITE); background = rounded(Color.rgb(23,35,61), 24f); elevation = 0f; stateListAnimator = null; setPadding(16, 16, 16, 16); setOnClickListener { Toast.makeText(this@MainActivity, "请在拼多多完成扫描取件", Toast.LENGTH_SHORT).show() } }
-        root.addView(title); root.addView(hero); root.addView(import, LinearLayout.LayoutParams(-1, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = 14 }); root.addView(simulate, LinearLayout.LayoutParams(-1, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = 7 }); root.addView(statusTabs); root.addView(summary); root.addView(list); root.addView(handoffNote); root.addView(handoff, LinearLayout.LayoutParams(-1, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = 6 }); setContentView(root); refresh()
+        val content = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(0, 0, 0, 12) }
+        content.addView(title); content.addView(hero); content.addView(import, LinearLayout.LayoutParams(-1, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = 14 }); content.addView(simulate, LinearLayout.LayoutParams(-1, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = 7 }); content.addView(statusTabs); content.addView(summary); content.addView(list)
+        root.addView(ScrollView(this).apply { isFillViewport = true; addView(content) }, LinearLayout.LayoutParams(-1, 0, 1f)); root.addView(handoffNote); root.addView(handoff, LinearLayout.LayoutParams(-1, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = 6 }); setContentView(root); refresh()
     }
 
     private fun addStatusTabs() {
         val tabs = listOf(
-            ParcelStatus.WAITING to "待入库",
-            ParcelStatus.STORED to "已入库",
+            ParcelStatus.IN_TRANSIT to "运输中",
+            ParcelStatus.READY to "待取件",
             ParcelStatus.PICKED_UP to "已取件",
             ParcelStatus.CANCELLED to "已取消"
         )
@@ -95,7 +97,7 @@ class MainActivity : Activity() {
         current.forEach { addParcelRow(list, it) }
         for (index in 0 until statusTabs.childCount) { val view = statusTabs.getChildAt(index); view.background = rounded(if (ParcelStatus.values()[index] == selectedStatus) Color.rgb(66,99,235) else Color.rgb(242,245,250), 10f); (view as Button).setTextColor(if (ParcelStatus.values()[index] == selectedStatus) Color.WHITE else Color.rgb(64,81,112)) }
     }
-    private fun statusLabel(status: ParcelStatus) = mapOf(ParcelStatus.WAITING to "待入库", ParcelStatus.STORED to "已入库", ParcelStatus.PICKED_UP to "已取件", ParcelStatus.CANCELLED to "已取消")[status]!!
+    private fun statusLabel(status: ParcelStatus) = mapOf(ParcelStatus.IN_TRANSIT to "运输中", ParcelStatus.READY to "待取件", ParcelStatus.PICKED_UP to "已取件", ParcelStatus.CANCELLED to "已取消")[status]!!
     private fun addParcelRow(container: LinearLayout, parcel: Parcel) {
         val checked = parcel.status == ParcelStatus.PICKED_UP
         val card = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; setPadding(12, 12, 12, 12); alpha = 0f; background = rounded(if (checked) Color.rgb(241,255,248) else Color.WHITE, 26f); animate().alpha(1f).setDuration(180).start() }
@@ -108,7 +110,7 @@ class MainActivity : Activity() {
         card.addView(product); card.addView(info); card.addView(action)
         container.addView(card, LinearLayout.LayoutParams(-1, ViewGroup.LayoutParams.WRAP_CONTENT).apply { bottomMargin = 12 })
     }
-    private fun chooseStatus(parcel: Parcel) { val labels = arrayOf("待入库", "已入库", "已取件", "已取消"); AlertDialog.Builder(this).setTitle("选择包裹状态").setSingleChoiceItems(labels, parcel.status.ordinal) { dialog, which -> parcel.status = ParcelStatus.values()[which]; parcel.found = parcel.status == ParcelStatus.PICKED_UP; save(); refresh(); dialog.dismiss() }.show() }
+    private fun chooseStatus(parcel: Parcel) { val labels = arrayOf("运输中", "待取件", "已取件", "已取消"); AlertDialog.Builder(this).setTitle("选择包裹状态").setSingleChoiceItems(labels, parcel.status.ordinal) { dialog, which -> parcel.status = ParcelStatus.values()[which]; parcel.found = parcel.status == ParcelStatus.PICKED_UP; save(); refresh(); dialog.dismiss() }.show() }
     private fun save() { storage.edit().putString("items", parcels.joinToString("\n") { "${it.code}|${it.name}|${it.found}|${it.status.name}" }).apply() }
-    private fun load() { storage.getString("items", "")?.lines()?.filter { it.isNotBlank() }?.forEach { val p = it.split("|"); if (p.size >= 3) parcels.add(Parcel(p[0], p[1], p[2] == "true", if (p.size >= 4) runCatching { ParcelStatus.valueOf(p[3]) }.getOrDefault(if (p[2] == "true") ParcelStatus.PICKED_UP else ParcelStatus.WAITING) else if (p[2] == "true") ParcelStatus.PICKED_UP else ParcelStatus.WAITING)) } }
+    private fun load() { storage.getString("items", "")?.lines()?.filter { it.isNotBlank() }?.forEach { val p = it.split("|"); if (p.size >= 3) parcels.add(Parcel(p[0], p[1], p[2] == "true", if (p.size >= 4) runCatching { ParcelStatus.valueOf(p[3]) }.getOrDefault(if (p[2] == "true") ParcelStatus.PICKED_UP else ParcelStatus.READY) else if (p[2] == "true") ParcelStatus.PICKED_UP else ParcelStatus.READY)) } }
 }
