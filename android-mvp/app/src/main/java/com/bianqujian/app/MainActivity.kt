@@ -32,6 +32,10 @@ import java.io.File
 import java.io.FileOutputStream
 import android.graphics.BitmapFactory
 import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.Paint
+import android.graphics.Path
+import android.graphics.Typeface
 
 enum class ParcelStatus { IN_TRANSIT, READY, PICKED_UP, CANCELLED }
 data class Parcel(val code: String, val name: String = "未提供商品名", var found: Boolean = false, var status: ParcelStatus = ParcelStatus.READY, val source: String = "截图识别", val location: String = "未识别位置", val parcelType: String = "未知类型", val carrier: String = "未知快递", val trackingNumber: String = "未知运单号", val updatedAt: String = "未知时间", val imagePath: String = "")
@@ -193,7 +197,7 @@ class MainActivity : Activity() {
     private fun addParcelRow(container: LinearLayout, parcel: Parcel) {
         val checked = parcel.status == ParcelStatus.PICKED_UP
         val card = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; setPadding(12, 12, 12, 12); alpha = 0f; background = rounded(if (checked) Color.rgb(241,255,248) else Color.WHITE, 26f); animate().alpha(1f).setDuration(180).start() }
-        val product: View = if (parcel.imagePath.isNotBlank() && File(parcel.imagePath).exists()) ImageView(this).apply { setImageBitmap(BitmapFactory.decodeFile(parcel.imagePath)); scaleType = ImageView.ScaleType.CENTER_CROP; background = rounded(if (checked) Color.rgb(225,248,235) else Color.rgb(246,243,231), 18f); layoutParams = LinearLayout.LayoutParams(dp(74), dp(92)).apply { rightMargin = dp(12) } } else TextView(this).apply { text = "📦"; textSize = 28f; gravity = Gravity.CENTER; setTextColor(Color.rgb(66,99,235)); background = rounded(if (checked) Color.rgb(225,248,235) else Color.rgb(246,243,231), 18f); layoutParams = LinearLayout.LayoutParams(dp(74), dp(92)).apply { rightMargin = dp(12) } }
+        val product: View = if (parcel.name.contains("毽球")) ProductIllustrationView(this, "毽球") else if (parcel.imagePath.isNotBlank() && File(parcel.imagePath).exists()) ImageView(this).apply { setImageBitmap(BitmapFactory.decodeFile(parcel.imagePath)); scaleType = ImageView.ScaleType.CENTER_CROP; background = rounded(if (checked) Color.rgb(225,248,235) else Color.rgb(246,243,231), 18f); layoutParams = LinearLayout.LayoutParams(dp(74), dp(92)).apply { rightMargin = dp(12) } } else ProductIllustrationView(this, "商品待确认")
         val info = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f) }
         info.addView(TextView(this).apply { text = parcel.name; textSize = 15f; setTypeface(null, 1); setTextColor(Color.rgb(23,35,61)) })
         info.addView(TextView(this).apply { text = "${parcel.parcelType} · ${parcel.carrier}"; textSize = 11f; setTextColor(Color.rgb(104,119,146)); setPadding(0, 5, 0, 4) })
@@ -201,6 +205,27 @@ class MainActivity : Activity() {
         info.addView(TextView(this).apply { text = parcel.code; textSize = 16f; setTypeface(null, 1); setTextColor(Color.rgb(49,76,126)) })
         card.addView(product); card.addView(info)
         container.addView(card, LinearLayout.LayoutParams(-1, ViewGroup.LayoutParams.WRAP_CONTENT).apply { bottomMargin = 12 })
+    }
+    private class ProductIllustrationView(context: Context, private val label: String) : View(context) {
+        private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
+        override fun onDraw(canvas: Canvas) {
+            super.onDraw(canvas)
+            val w = width.toFloat(); val h = height.toFloat()
+            paint.color = Color.rgb(246, 243, 231); canvas.drawRoundRect(0f, 0f, w, h, 18f, 18f, paint)
+            if (label.contains("毽球")) {
+                paint.color = Color.rgb(78, 180, 92); canvas.drawOval(w * .32f, h * .56f, w * .68f, h * .78f, paint)
+                paint.color = Color.rgb(241, 94, 89); canvas.drawCircle(w * .5f, h * .68f, w * .11f, paint)
+                paint.color = Color.WHITE
+                val feather = Path().apply { moveTo(w * .5f, h * .58f); lineTo(w * .27f, h * .2f); lineTo(w * .4f, h * .27f); lineTo(w * .5f, h * .1f); lineTo(w * .6f, h * .27f); lineTo(w * .73f, h * .2f); close() }
+                canvas.drawPath(feather, paint)
+                paint.color = Color.rgb(66, 99, 235); paint.style = Paint.Style.STROKE; paint.strokeWidth = 2f; canvas.drawLine(w * .5f, h * .58f, w * .5f, h * .16f, paint); paint.style = Paint.Style.FILL
+            } else {
+                paint.color = Color.rgb(66, 99, 235); canvas.drawRoundRect(w * .23f, h * .25f, w * .77f, h * .67f, 8f, 8f, paint)
+                paint.color = Color.rgb(255, 218, 104); canvas.drawRect(w * .23f, h * .25f, w * .77f, h * .35f, paint)
+                paint.color = Color.WHITE; canvas.drawCircle(w * .5f, h * .5f, w * .08f, paint)
+            }
+            paint.color = Color.rgb(66, 99, 235); paint.textSize = 10f; paint.typeface = Typeface.DEFAULT_BOLD; paint.textAlign = Paint.Align.CENTER; canvas.drawText(label, w / 2f, h * .92f, paint); paint.textAlign = Paint.Align.LEFT
+        }
     }
     private fun save() { storage.edit().putString("items", parcels.joinToString("\n") { "${it.code}|${it.name}|${it.found}|${it.status.name}|${it.source}|${it.location}|${it.parcelType}|${it.carrier}|${it.trackingNumber}|${it.updatedAt}|${it.imagePath}" }).apply() }
     private fun load() { storage.getString("items", "")?.lines()?.filter { it.isNotBlank() }?.forEach { val p = it.split("|"); if (p.size >= 3) parcels.add(Parcel(p[0], p[1], p[2] == "true", if (p.size >= 4) runCatching { ParcelStatus.valueOf(p[3]) }.getOrDefault(if (p[2] == "true") ParcelStatus.PICKED_UP else ParcelStatus.READY) else if (p[2] == "true") ParcelStatus.PICKED_UP else ParcelStatus.READY, p.getOrElse(4) { "截图识别" }, p.getOrElse(5) { "未识别位置" }, p.getOrElse(6) { "未知类型" }, p.getOrElse(7) { "未知快递" }, p.getOrElse(8) { "未知运单号" }, p.getOrElse(9) { "未知时间" }, p.getOrElse(10) { "" })) } }
