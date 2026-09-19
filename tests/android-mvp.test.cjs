@@ -23,12 +23,14 @@ test('安卓 MVP 工程包含入口、清单和本地持久化逻辑', () => {
   assert.match(code, /getLaunchIntentForPackage\("com\.xunmeng\.pinduoduo"\)/);
   assert.doesNotMatch(code, /是否跳转到拼多多/);
   assert.match(code, /if \(packageManager\.getLaunchIntentForPackage\("com\.xunmeng\.pinduoduo"\) == null\)/);
-  assert.match(code, /market:\/\/details\?id=com\.xunmeng\.pinduoduo/);
-  assert.match(code, /sj\.qq\.com\/appdetail\/com\.xunmeng\.pinduoduo/);
+  assert.match(code, /market:\/\/search\?q=拼多多/);
+  assert.match(code, /sj\.qq\.com\/app\/search\?key=拼多多/);
   const wrapper = fs.readFileSync('android-mvp/gradle/wrapper/gradle-wrapper.properties', 'utf8');
   assert.match(wrapper, /gradle-9\.3\.0-bin\.zip/);
   const manifest = fs.readFileSync('android-mvp/app/src/main/AndroidManifest.xml', 'utf8');
   assert.match(manifest, /BIND_NOTIFICATION_LISTENER_SERVICE/);
+  assert.match(manifest, /<queries>/);
+  assert.match(manifest, /android:name="com\.xunmeng\.pinduoduo"/);
   assert.ok(fs.existsSync('android-mvp/app/src/main/java/com/bianqujian/app/ParcelNotificationListener.kt'));
   const listener = fs.readFileSync('android-mvp/app/src/main/java/com/bianqujian/app/ParcelNotificationListener.kt', 'utf8');
   assert.match(listener, /已出库\|已取件\|已领取/);

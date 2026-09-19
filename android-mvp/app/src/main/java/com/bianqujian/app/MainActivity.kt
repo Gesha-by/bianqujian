@@ -123,9 +123,9 @@ class MainActivity : Activity() {
         } else startActivity(intent)
     }
     private fun openPddStore() {
-        val market = Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=com.xunmeng.pinduoduo"))
+        val market = Intent(Intent.ACTION_VIEW, Uri.parse("market://search?q=拼多多"))
         try { startActivity(market) }
-        catch (_: Exception) { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://sj.qq.com/appdetail/com.xunmeng.pinduoduo"))) }
+        catch (_: Exception) { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://sj.qq.com/app/search?key=拼多多"))) }
     }
     private fun simulateArrival() { if (parcels.none { it.code == "A-302-8" }) parcels.add(Parcel("A-302-8", "洗衣液")); save(); refresh(); Toast.makeText(this, "已加入一条模拟到件数据", Toast.LENGTH_SHORT).show() }
 
