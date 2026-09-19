@@ -17,6 +17,9 @@ test('安卓 MVP 工程包含入口、清单和本地持久化逻辑', () => {
   assert.match(code, /saveImportedImage/);
   assert.match(code, /BitmapFactory.decodeFile/);
   assert.match(code, /imagePath: String/);
+  assert.match(code, /normalizedText/);
+  assert.match(code, /parcels\[index\] = item/);
+  assert.match(code, /已更新/);
   assert.match(code, /FLAG_DEBUGGABLE/);
   assert.match(code, /completedList/);
   assert.match(code, /IN_TRANSIT/);
