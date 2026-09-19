@@ -37,6 +37,11 @@ test('安卓 MVP 工程包含入口、清单和本地持久化逻辑', () => {
   assert.match(listener, /PICKED_UP/);
   assert.match(listener, /while \(fields\.size < 6\)/);
   assert.match(listener, /fields\[5\] = location/);
+  const deploy = fs.readFileSync('android-mvp/install-restart.ps1', 'utf8');
+  assert.match(deploy, /assembleDebug/);
+  assert.match(deploy, /install -r/);
+  assert.match(deploy, /force-stop com\.bianqujian\.app/);
+  assert.match(deploy, /monkey -p com\.bianqujian\.app/);
   assert.match(code, /location: String/);
   assert.match(code, /未识别位置/);
 });
