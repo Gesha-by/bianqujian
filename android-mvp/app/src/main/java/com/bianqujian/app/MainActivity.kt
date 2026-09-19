@@ -109,8 +109,26 @@ class MainActivity : Activity() {
     }
     private fun openPdd() {
         val intent = packageManager.getLaunchIntentForPackage("com.xunmeng.pinduoduo")
-        if (intent == null) Toast.makeText(this, "未检测到拼多多，请先安装拼多多", Toast.LENGTH_LONG).show()
-        else startActivity(intent)
+        if (intent != null) {
+            AlertDialog.Builder(this)
+                .setTitle("打开拼多多")
+                .setMessage("检测到设备已安装拼多多，是否跳转到拼多多进行扫描取件？")
+                .setNegativeButton("取消", null)
+                .setPositiveButton("跳转") { _, _ -> startActivity(intent) }
+                .show()
+        } else {
+            AlertDialog.Builder(this)
+                .setTitle("未安装拼多多")
+                .setMessage("设备中没有检测到拼多多，是否打开应用商店下载安装？")
+                .setNegativeButton("取消", null)
+                .setPositiveButton("打开应用商店") { _, _ -> openPddStore() }
+                .show()
+        }
+    }
+    private fun openPddStore() {
+        val market = Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=com.xunmeng.pinduoduo"))
+        try { startActivity(market) }
+        catch (_: Exception) { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://sj.qq.com/appdetail/com.xunmeng.pinduoduo"))) }
     }
     private fun simulateArrival() { if (parcels.none { it.code == "A-302-8" }) parcels.add(Parcel("A-302-8", "洗衣液")); save(); refresh(); Toast.makeText(this, "已加入一条模拟到件数据", Toast.LENGTH_SHORT).show() }
 
