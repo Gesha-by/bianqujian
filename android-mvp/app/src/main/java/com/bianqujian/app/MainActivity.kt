@@ -66,6 +66,7 @@ class MainActivity : Activity() {
         import.addView(TextView(this).apply { text = "导入订单长截图\n识别后确认，再加入找件清单"; textSize = 12f; setTextColor(Color.rgb(42,55,82)); layoutParams = LinearLayout.LayoutParams(0, -2, 1f) })
         import.addView(Button(this).apply { text = "识别图片"; textSize = 11f; setTextColor(Color.rgb(66,99,235)); background = rounded(Color.rgb(237,241,255), 16f); elevation = 0f; stateListAnimator = null; setOnClickListener { chooseText() } })
         val simulate = Button(this).apply { text = "模拟到件数据（测试）"; textSize = 10f; setTextColor(Color.rgb(104,119,146)); background = rounded(Color.rgb(242,245,250), 16f); elevation = 0f; stateListAnimator = null; setOnClickListener { simulateArrival() }; visibility = if ((applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0) View.VISIBLE else View.GONE }
+        val simulatePicked = Button(this).apply { text = "模拟拼多多已取件通知（测试）"; textSize = 10f; setTextColor(Color.rgb(104,119,146)); background = rounded(Color.rgb(242,245,250), 16f); elevation = 0f; stateListAnimator = null; setOnClickListener { simulatePickedUpNotification() }; visibility = if ((applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0) View.VISIBLE else View.GONE }
         val autoSync = Button(this).apply { text = if (isNotificationAccessEnabled()) "通知自动同步已开启" else "开启通知自动同步"; textSize = 11f; setTextColor(Color.rgb(66,99,235)); background = rounded(Color.rgb(237,241,255), 16f); elevation = 0f; stateListAnimator = null; setOnClickListener { startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)) } }
         statusTabs = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; setPadding(0, 14, 0, 4) }
         list = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
@@ -75,7 +76,7 @@ class MainActivity : Activity() {
         val handoffNote = TextView(this).apply { text = "取到包裹后，再进行最后一步"; textSize = 12f; setTextColor(Color.rgb(92,103,126)); setPadding(2, 16, 2, 6) }
         val handoff = Button(this).apply { text = "打开拼多多扫描取件"; textSize = 14f; setTextColor(Color.WHITE); background = rounded(Color.rgb(23,35,61), 24f); elevation = 0f; stateListAnimator = null; setPadding(16, 16, 16, 16); setOnClickListener { choosePddOpenMode() } }
         val content = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(0, 0, 0, 12) }
-        content.addView(title); content.addView(hero); content.addView(import, LinearLayout.LayoutParams(-1, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = 14 }); content.addView(autoSync, LinearLayout.LayoutParams(-1, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = 7 }); content.addView(simulate, LinearLayout.LayoutParams(-1, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = 7 }); content.addView(statusTabs); content.addView(summary); content.addView(list)
+        content.addView(title); content.addView(hero); content.addView(import, LinearLayout.LayoutParams(-1, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = 14 }); content.addView(autoSync, LinearLayout.LayoutParams(-1, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = 7 }); content.addView(simulate, LinearLayout.LayoutParams(-1, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = 7 }); content.addView(simulatePicked, LinearLayout.LayoutParams(-1, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = 7 }); content.addView(statusTabs); content.addView(summary); content.addView(list)
         root.addView(ScrollView(this).apply { isFillViewport = true; addView(content) }, LinearLayout.LayoutParams(-1, 0, 1f)); root.addView(handoffNote); root.addView(handoff, LinearLayout.LayoutParams(-1, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = 6 }); setContentView(root); refresh()
     }
 
@@ -146,6 +147,13 @@ class MainActivity : Activity() {
     }
     private fun isNotificationAccessEnabled(): Boolean = Settings.Secure.getString(contentResolver, "enabled_notification_listeners")?.contains(packageName) == true
     private fun simulateArrival() { if (parcels.none { it.code == "A-302-8" }) parcels.add(Parcel("A-302-8", "洗衣液")); save(); refresh(); Toast.makeText(this, "已加入一条模拟到件数据", Toast.LENGTH_SHORT).show() }
+    private fun simulatePickedUpNotification() {
+        val code = "A-302-8"
+        val index = parcels.indexOfFirst { it.code == code }
+        val item = Parcel(code, "洗衣液", true, ParcelStatus.PICKED_UP, "拼多多通知（模拟）", "妈妈驿站", "普通快递", "圆通", "YT000000000000", SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.CHINA).format(Date()), "")
+        if (index < 0) parcels.add(item) else parcels[index] = item
+        save(); refresh(); Toast.makeText(this, "已模拟拼多多通知：洗衣液已取件", Toast.LENGTH_LONG).show()
+    }
 
     private fun chooseText() { AlertDialog.Builder(this).setTitle("选择到件截图").setMessage("便取件只会读取你选择的截图，用于识别商品信息和取件码，不会读取其他照片。").setNegativeButton("取消", null).setPositiveButton("选择截图") { _, _ -> startActivityForResult(Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI).apply { type = "image/*" }, 9) }.show() }
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) { super.onActivityResult(requestCode, resultCode, data); if (requestCode == 9 && resultCode == RESULT_OK) data?.data?.let { importImage(it) } }
