@@ -28,7 +28,6 @@ class MainActivity : Activity() {
 
     private fun render() {
         val root = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(28, 34, 28, 24); setBackgroundColor(Color.rgb(246,248,253)) }
-        val back = Button(this).apply { text = "返回介绍"; setTextColor(Color.rgb(49,92,255)); background = rounded(Color.rgb(233,239,255), 18f); setOnClickListener { finish() } }
         val title = TextView(this).apply { text = "便取件"; textSize = 30f; setTextColor(Color.rgb(20,35,70)); setTypeface(null, 1); setPadding(0, 22, 0, 8) }
         val hero = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(22, 20, 22, 20); background = rounded(Color.rgb(73,105,247), 28f) }
         hero.addView(TextView(this).apply { text = "下楼前，先看清楚要找什么"; textSize = 14f; setTextColor(Color.WHITE) })
@@ -38,7 +37,7 @@ class MainActivity : Activity() {
         summary = TextView(this).apply { textSize = 16f; setTextColor(Color.rgb(20,35,70)); setPadding(0, 22, 0, 10) }
         list = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
         val handoff = TextView(this).apply { text = "导入包裹后开始找件\n\n找到包裹后，再打开拼多多扫码出库"; textSize = 16f; setTextColor(Color.WHITE); setPadding(20, 20, 20, 20); background = rounded(Color.rgb(20,35,70), 24f) }
-        root.addView(back); root.addView(title); root.addView(hero); root.addView(import, LinearLayout.LayoutParams(-1, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = 14 }); root.addView(summary); root.addView(list, LinearLayout.LayoutParams(-1, 0, 1f)); root.addView(handoff); setContentView(root); refresh()
+        root.addView(title); root.addView(hero); root.addView(import, LinearLayout.LayoutParams(-1, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = 14 }); root.addView(summary); root.addView(list, LinearLayout.LayoutParams(-1, 0, 1f)); root.addView(handoff); setContentView(root); refresh()
     }
 
     private fun rounded(color: Int, radius: Float) = GradientDrawable().apply { setColor(color); cornerRadius = radius }
