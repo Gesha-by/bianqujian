@@ -47,7 +47,7 @@ class MainActivity : Activity() {
         val import = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; setPadding(16, 13, 10, 13); background = rounded(Color.WHITE, 17f) }
         import.addView(TextView(this).apply { text = "导入订单长截图\n一次识别多个商品，确认后加入清单"; textSize = 13f; setTextColor(Color.rgb(42,55,82)); layoutParams = LinearLayout.LayoutParams(0, -2, 1f) })
         import.addView(Button(this).apply { text = "识别图片"; textSize = 12f; setTextColor(Color.rgb(66,99,235)); background = rounded(Color.rgb(237,241,255), 11f); setOnClickListener { chooseText() } })
-        val simulate = Button(this).apply { text = "模拟到件通知（测试）"; textSize = 12f; setTextColor(Color.rgb(66,99,235)); background = rounded(Color.rgb(237,241,255), 11f); setOnClickListener { simulateArrival() } }
+        val simulate = Button(this).apply { text = "模拟到件数据（测试）"; textSize = 12f; setTextColor(Color.rgb(66,99,235)); background = rounded(Color.rgb(237,241,255), 11f); setOnClickListener { simulateArrival() } }
         summary = TextView(this).apply { textSize = 16f; setTextColor(Color.rgb(23,35,61)); setTypeface(null, 1); setPadding(2, 22, 2, 10) }
         list = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
         val handoff = Button(this).apply { text = "找到包裹后，再打开拼多多扫码出库"; textSize = 14f; setTextColor(Color.WHITE); background = rounded(Color.rgb(23,35,61), 18f); setPadding(16, 16, 16, 16); setOnClickListener { Toast.makeText(this@MainActivity, "正式版将打开拼多多扫码出库", Toast.LENGTH_SHORT).show() } }
@@ -55,7 +55,7 @@ class MainActivity : Activity() {
     }
 
     private fun rounded(color: Int, radius: Float) = GradientDrawable().apply { setColor(color); cornerRadius = radius }
-    private fun simulateArrival() { val manager = getSystemService(NotificationManager::class.java); manager.createNotificationChannel(NotificationChannel("parcel_test", "便取件测试", NotificationManager.IMPORTANCE_DEFAULT)); val notification = NotificationCompat.Builder(this, "parcel_test").setSmallIcon(android.R.drawable.ic_dialog_info).setContentTitle("快递到件通知").setContentText("您的包裹已到达驿站，取件码 A-302-8，商品：洗衣液").setAutoCancel(true).build(); manager.notify(3028, notification); Toast.makeText(this, "已发送测试通知，请稍候查看清单", Toast.LENGTH_SHORT).show() }
+    private fun simulateArrival() { if (parcels.none { it.code == "A-302-8" }) parcels.add(Parcel("A-302-8", "洗衣液")); save(); refresh(); Toast.makeText(this, "已加入一条模拟到件数据", Toast.LENGTH_SHORT).show() }
 
     private fun chooseText() { AlertDialog.Builder(this).setTitle("选择到件截图").setMessage("便取件只会读取你选择的截图，用于识别商品信息和取件码，不会读取其他照片。").setNegativeButton("取消", null).setPositiveButton("选择截图") { _, _ -> startActivityForResult(Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI).apply { type = "image/*" }, 9) }.show() }
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) { super.onActivityResult(requestCode, resultCode, data); if (requestCode == 9 && resultCode == RESULT_OK) data?.data?.let { importImage(it) } }
