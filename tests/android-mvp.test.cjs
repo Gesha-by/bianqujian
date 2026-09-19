@@ -19,7 +19,7 @@ test('安卓 MVP 工程包含入口、清单和本地持久化逻辑', () => {
   assert.match(code, /已取件/);
   assert.match(code, /已取消/);
   assert.match(code, /选择包裹状态/);
-  assert.match(code, /打开拼多多扫码出库/);
+  assert.match(code, /打开拼多多扫描取件/);
   const wrapper = fs.readFileSync('android-mvp/gradle/wrapper/gradle-wrapper.properties', 'utf8');
   assert.match(wrapper, /gradle-9\.3\.0-bin\.zip/);
   const manifest = fs.readFileSync('android-mvp/app/src/main/AndroidManifest.xml', 'utf8');
