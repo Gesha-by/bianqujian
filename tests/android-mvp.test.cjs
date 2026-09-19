@@ -47,6 +47,9 @@ test('安卓 MVP 工程包含入口、清单和本地持久化逻辑', () => {
   assert.match(listener, /PICKED_UP/);
   assert.match(code, /parcelType: String/);
   assert.match(code, /trackingNumber: String/);
+  assert.match(code, /ACTION_NOTIFICATION_LISTENER_SETTINGS/);
+  assert.match(code, /isNotificationAccessEnabled/);
+  assert.match(code, /自动同步中/);
   const deploy = fs.readFileSync('android-mvp/install-restart.ps1', 'utf8');
   assert.match(deploy, /assembleDebug/);
   assert.match(deploy, /install -r/);
