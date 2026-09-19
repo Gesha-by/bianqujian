@@ -10,6 +10,15 @@ test('安卓 MVP 工程包含入口、清单和本地持久化逻辑', () => {
   assert.match(code, /codePattern/);
   assert.match(code, /FLAG_DEBUGGABLE/);
   assert.match(code, /completedList/);
+  assert.match(code, /WAITING/);
+  assert.match(code, /STORED/);
+  assert.match(code, /PICKED_UP/);
+  assert.match(code, /CANCELLED/);
+  assert.match(code, /待入库/);
+  assert.match(code, /已入库/);
+  assert.match(code, /已取件/);
+  assert.match(code, /已取消/);
+  assert.match(code, /选择包裹状态/);
   assert.match(code, /打开拼多多扫码出库/);
   const wrapper = fs.readFileSync('android-mvp/gradle/wrapper/gradle-wrapper.properties', 'utf8');
   assert.match(wrapper, /gradle-9\.3\.0-bin\.zip/);
