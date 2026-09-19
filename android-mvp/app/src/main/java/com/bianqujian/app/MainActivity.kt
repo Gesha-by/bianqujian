@@ -60,7 +60,7 @@ class MainActivity : Activity() {
         addStatusTabs()
         summary = TextView(this).apply { textSize = 14f; setTextColor(Color.rgb(23,35,61)); setTypeface(null, 1); setPadding(12, 18, 2, 8) }
         val handoffNote = TextView(this).apply { text = "取到包裹后，再进行最后一步"; textSize = 12f; setTextColor(Color.rgb(92,103,126)); setPadding(2, 16, 2, 6) }
-        val handoff = Button(this).apply { text = "打开拼多多扫描取件"; textSize = 14f; setTextColor(Color.WHITE); background = rounded(Color.rgb(23,35,61), 24f); elevation = 0f; stateListAnimator = null; setPadding(16, 16, 16, 16); setOnClickListener { Toast.makeText(this@MainActivity, "请在拼多多完成扫描取件", Toast.LENGTH_SHORT).show() } }
+        val handoff = Button(this).apply { text = "打开拼多多扫描取件"; textSize = 14f; setTextColor(Color.WHITE); background = rounded(Color.rgb(23,35,61), 24f); elevation = 0f; stateListAnimator = null; setPadding(16, 16, 16, 16); setOnClickListener { choosePddOpenMode() } }
         val content = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(0, 0, 0, 12) }
         content.addView(title); content.addView(hero); content.addView(import, LinearLayout.LayoutParams(-1, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = 14 }); content.addView(simulate, LinearLayout.LayoutParams(-1, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = 7 }); content.addView(statusTabs); content.addView(summary); content.addView(list)
         root.addView(ScrollView(this).apply { isFillViewport = true; addView(content) }, LinearLayout.LayoutParams(-1, 0, 1f)); root.addView(handoffNote); root.addView(handoff, LinearLayout.LayoutParams(-1, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = 6 }); setContentView(root); refresh()
@@ -84,6 +84,24 @@ class MainActivity : Activity() {
 
     private fun rounded(color: Int, radius: Float) = GradientDrawable().apply { setColor(color); cornerRadius = radius }
     private fun dp(value: Int) = (value * resources.displayMetrics.density).toInt()
+    private fun choosePddOpenMode() {
+        val saved = storage.getString("pdd_open_mode", null)
+        if (saved == "always") { openPdd(); return }
+        val labels = arrayOf("记住此设置", "以后都打开", "仅打开一次", "不打开")
+        AlertDialog.Builder(this).setTitle("打开拼多多扫描取件").setMessage("请选择这次及以后如何处理取件操作").setSingleChoiceItems(labels, -1) { dialog, which ->
+            when (which) {
+                0 -> { storage.edit().putString("pdd_open_mode", "remember").apply(); openPdd(); dialog.dismiss() }
+                1 -> { storage.edit().putString("pdd_open_mode", "always").apply(); openPdd(); dialog.dismiss() }
+                2 -> { openPdd(); dialog.dismiss() }
+                else -> dialog.dismiss()
+            }
+        }.show()
+    }
+    private fun openPdd() {
+        val intent = packageManager.getLaunchIntentForPackage("com.xunmeng.pinduoduo")
+        if (intent == null) Toast.makeText(this, "未检测到拼多多，请先安装拼多多", Toast.LENGTH_LONG).show()
+        else startActivity(intent)
+    }
     private fun simulateArrival() { if (parcels.none { it.code == "A-302-8" }) parcels.add(Parcel("A-302-8", "洗衣液")); save(); refresh(); Toast.makeText(this, "已加入一条模拟到件数据", Toast.LENGTH_SHORT).show() }
 
     private fun chooseText() { AlertDialog.Builder(this).setTitle("选择到件截图").setMessage("便取件只会读取你选择的截图，用于识别商品信息和取件码，不会读取其他照片。").setNegativeButton("取消", null).setPositiveButton("选择截图") { _, _ -> startActivityForResult(Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI).apply { type = "image/*" }, 9) }.show() }
