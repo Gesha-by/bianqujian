@@ -21,7 +21,8 @@ test('安卓 MVP 工程包含入口、清单和本地持久化逻辑', () => {
   assert.match(code, /选择包裹状态/);
   assert.match(code, /打开拼多多扫描取件/);
   assert.match(code, /getLaunchIntentForPackage\("com\.xunmeng\.pinduoduo"\)/);
-  assert.match(code, /是否跳转到拼多多/);
+  assert.doesNotMatch(code, /是否跳转到拼多多/);
+  assert.match(code, /if \(packageManager\.getLaunchIntentForPackage\("com\.xunmeng\.pinduoduo"\) == null\)/);
   assert.match(code, /market:\/\/details\?id=com\.xunmeng\.pinduoduo/);
   assert.match(code, /sj\.qq\.com\/appdetail\/com\.xunmeng\.pinduoduo/);
   const wrapper = fs.readFileSync('android-mvp/gradle/wrapper/gradle-wrapper.properties', 'utf8');

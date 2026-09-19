@@ -85,6 +85,10 @@ class MainActivity : Activity() {
     private fun rounded(color: Int, radius: Float) = GradientDrawable().apply { setColor(color); cornerRadius = radius }
     private fun dp(value: Int) = (value * resources.displayMetrics.density).toInt()
     private fun choosePddOpenMode() {
+        if (packageManager.getLaunchIntentForPackage("com.xunmeng.pinduoduo") == null) {
+            openPdd()
+            return
+        }
         val saved = storage.getString("pdd_open_mode", null)
         if (saved == "always") { openPdd(); return }
         val labels = arrayOf("以后都打开", "仅打开一次", "不打开")
@@ -109,21 +113,14 @@ class MainActivity : Activity() {
     }
     private fun openPdd() {
         val intent = packageManager.getLaunchIntentForPackage("com.xunmeng.pinduoduo")
-        if (intent != null) {
-            AlertDialog.Builder(this)
-                .setTitle("打开拼多多")
-                .setMessage("检测到设备已安装拼多多，是否跳转到拼多多进行扫描取件？")
-                .setNegativeButton("取消", null)
-                .setPositiveButton("跳转") { _, _ -> startActivity(intent) }
-                .show()
-        } else {
+        if (intent == null) {
             AlertDialog.Builder(this)
                 .setTitle("未安装拼多多")
                 .setMessage("设备中没有检测到拼多多，是否打开应用商店下载安装？")
                 .setNegativeButton("取消", null)
                 .setPositiveButton("打开应用商店") { _, _ -> openPddStore() }
                 .show()
-        }
+        } else startActivity(intent)
     }
     private fun openPddStore() {
         val market = Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=com.xunmeng.pinduoduo"))
