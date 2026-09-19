@@ -11,6 +11,7 @@ test('安卓 MVP 工程包含入口、清单和本地持久化逻辑', () => {
   assert.match(code, /\{1,4\}\)\{1,2\}/);
   assert.match(code, /extractOcrLocation/);
   assert.match(code, /extractOcrTracking/);
+  assert.match(code, /未提供商品名/);
   assert.match(code, /FLAG_DEBUGGABLE/);
   assert.match(code, /completedList/);
   assert.match(code, /IN_TRANSIT/);
