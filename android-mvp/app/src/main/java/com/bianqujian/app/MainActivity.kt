@@ -25,6 +25,9 @@ import android.provider.Settings
 import android.content.pm.ApplicationInfo
 import android.graphics.drawable.GradientDrawable
 import java.util.regex.Pattern
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 enum class ParcelStatus { IN_TRANSIT, READY, PICKED_UP, CANCELLED }
 data class Parcel(val code: String, val name: String = "未提供商品名", var found: Boolean = false, var status: ParcelStatus = ParcelStatus.READY, val source: String = "截图识别", val location: String = "未识别位置", val parcelType: String = "未知类型", val carrier: String = "未知快递", val trackingNumber: String = "未知运单号", val updatedAt: String = "未知时间")
@@ -37,7 +40,7 @@ class MainActivity : Activity() {
     private var selectedStatus = ParcelStatus.READY
     private lateinit var summary: TextView
     private val storage by lazy { getSharedPreferences("parcels", MODE_PRIVATE) }
-    private val codePattern = Pattern.compile("(?<![A-Z0-9])[A-Z]{1,3}\\s*[-—–－]?\\s*\\d{1,4}\\s*[-—–－]\\s*\\d{1,4}(?![A-Z0-9])")
+    private val codePattern = Pattern.compile("(?<![A-Z0-9])[A-Z]{1,3}\\s*[-—–－]?\\s*\\d{1,4}(?:\\s*[-—–－]\\s*\\d{1,4}){1,2}(?![A-Z0-9])")
     private val updateReceiver = object : BroadcastReceiver() { override fun onReceive(context: Context?, intent: Intent?) { parcels.clear(); load(); refresh() } }
 
     override fun onCreate(savedInstanceState: Bundle?) { super.onCreate(savedInstanceState); load(); render() }
@@ -138,7 +141,11 @@ class MainActivity : Activity() {
 
     private fun chooseText() { AlertDialog.Builder(this).setTitle("选择到件截图").setMessage("便取件只会读取你选择的截图，用于识别商品信息和取件码，不会读取其他照片。").setNegativeButton("取消", null).setPositiveButton("选择截图") { _, _ -> startActivityForResult(Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI).apply { type = "image/*" }, 9) }.show() }
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) { super.onActivityResult(requestCode, resultCode, data); if (requestCode == 9 && resultCode == RESULT_OK) data?.data?.let { importImage(it) } }
-    private fun importImage(uri: Uri) { val image = InputImage.fromFilePath(this, uri); val recognizer = TextRecognition.getClient(ChineseTextRecognizerOptions.Builder().build()); recognizer.process(image).addOnSuccessListener { result -> val text = result.text.uppercase().replace('－', '-').replace('—', '-').replace('–', '-'); val found = codePattern.matcher(text); var added = 0; while (found.find()) { val code = found.group().replace(Regex("\\s+"), "").replace(Regex("-+"), "-"); if (parcels.none { it.code == code }) { parcels.add(Parcel(code)); added++ } }; save(); refresh(); Toast.makeText(this, if (added == 0) "未识别到货架取件码，请确认截图清晰并包含类似 A-302-8 的编码" else "识别完成，已导入 $added 个取件码", Toast.LENGTH_LONG).show() }.addOnFailureListener { Toast.makeText(this, "图片识别失败，请重试", Toast.LENGTH_LONG).show() } }
+    private fun importImage(uri: Uri) { val image = InputImage.fromFilePath(this, uri); val recognizer = TextRecognition.getClient(ChineseTextRecognizerOptions.Builder().build()); recognizer.process(image).addOnSuccessListener { result -> val rawText = result.text; val text = rawText.uppercase().replace('－', '-').replace('—', '-').replace('–', '-'); val found = codePattern.matcher(text); val location = extractOcrLocation(rawText); val carrier = extractOcrCarrier(rawText); val tracking = extractOcrTracking(rawText); val updatedAt = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.CHINA).format(Date()); var added = 0; while (found.find()) { val code = found.group().replace(Regex("\\s+"), "").replace(Regex("-+"), "-"); if (parcels.none { it.code == code }) { parcels.add(Parcel(code, extractOcrName(rawText), false, ParcelStatus.READY, "截图识别", location, "普通快递", carrier, tracking, updatedAt)); added++ } }; save(); refresh(); Toast.makeText(this, if (added == 0) "未识别到取件码，请确认截图包含类似 B8-5-153 或 A-302-8 的编码" else "识别完成，已导入 $added 个取件码，已提取位置、快递和运单信息", Toast.LENGTH_LONG).show() }.addOnFailureListener { Toast.makeText(this, "图片识别失败，请重试", Toast.LENGTH_LONG).show() } }
+    private fun extractOcrLocation(text: String): String = Regex("(?:取件点|驿站|收货地址|地址)[：:]?\\s*([^\\n]{4,60})").find(text)?.groupValues?.get(1)?.trim() ?: "未识别位置"
+    private fun extractOcrCarrier(text: String): String = Regex("(顺丰|中通|圆通|申通|韵达|极兔|邮政|京东|德邦|菜鸟)").find(text)?.groupValues?.get(1) ?: "未知快递"
+    private fun extractOcrTracking(text: String): String = Regex("(?<![A-Z0-9])(?:SF|YT|ZT|JD|JT)?[A-Z0-9]{8,20}(?![A-Z0-9])").find(text.uppercase())?.value ?: "未知运单号"
+    private fun extractOcrName(text: String): String = text.lineSequence().map { it.trim() }.firstOrNull { it.length in 4..40 && it !in listOf("收货地址", "快递员") && !it.contains("取件码") && !it.contains("订单编号") } ?: "未提供商品名"
     private fun refresh() {
         list.removeAllViews()
         val current = parcels.filter { it.status == selectedStatus }
