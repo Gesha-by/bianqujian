@@ -22,6 +22,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.IntentFilter
 import android.content.pm.ApplicationInfo
+import android.provider.Settings
 import android.graphics.drawable.GradientDrawable
 import java.util.regex.Pattern
 
@@ -120,8 +121,15 @@ class MainActivity : Activity() {
                 .setNegativeButton("取消", null)
                 .setPositiveButton("打开应用商店") { _, _ -> openPddStore() }
                 .show()
-        } else startActivity(intent)
+        } else {
+            startActivity(intent)
+            if (!isPddAccessibilityEnabled()) {
+                Toast.makeText(this, "如需自动进入身份码，请在系统设置中开启“便取件拼多多页面辅助”", Toast.LENGTH_LONG).show()
+                startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
+            }
+        }
     }
+    private fun isPddAccessibilityEnabled(): Boolean = Settings.Secure.getString(contentResolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES)?.contains(packageName) == true
     private fun openPddStore() {
         val market = Intent(Intent.ACTION_VIEW, Uri.parse("market://search?q=拼多多"))
         try { startActivity(market) }
