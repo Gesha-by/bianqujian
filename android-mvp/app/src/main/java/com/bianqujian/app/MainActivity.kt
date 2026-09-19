@@ -193,7 +193,7 @@ class MainActivity : Activity() {
         crop?.recycle()
         return if (crop == null) "" else file.absolutePath
     }
-    private fun extractOcrLocation(text: String): String = Regex("(?:取件点|驿站|收货地址|地址)[：:]?\\s*([^\\n]{4,60})").find(text)?.groupValues?.get(1)?.trim() ?: "未识别位置"
+    private fun extractOcrLocation(text: String): String = Regex("(?:取件点|驿站|收货地址|地址)[：:]?\\s*([^\\n]{4,60})").find(text)?.groupValues?.get(1)?.trim()?.replace(Regex("^[1Il|丨]+(?=北区|妈妈驿站|驿站)"), "")?.trim()?.ifBlank { "未识别位置" } ?: "未识别位置"
     private fun extractOcrCarrier(text: String): String = Regex("(顺丰|中通|圆通|申通|韵达|极兔|邮政|京东|德邦|菜鸟)").find(text)?.groupValues?.get(1) ?: "未知快递"
     private fun extractOcrTracking(text: String): String = Regex("(?<![A-Z0-9])(?:SF|YT|ZT|JD|JT)?[A-Z0-9]{8,20}(?![A-Z0-9])").find(text.uppercase())?.value ?: "未知运单号"
     private fun extractOcrName(text: String): String {
