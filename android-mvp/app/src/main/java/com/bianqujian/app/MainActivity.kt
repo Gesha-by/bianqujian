@@ -61,6 +61,7 @@ class MainActivity : Activity() {
     }
 
     private fun rounded(color: Int, radius: Float) = GradientDrawable().apply { setColor(color); cornerRadius = radius }
+    private fun dp(value: Int) = (value * resources.displayMetrics.density).toInt()
     private fun simulateArrival() { if (parcels.none { it.code == "A-302-8" }) parcels.add(Parcel("A-302-8", "洗衣液")); save(); refresh(); Toast.makeText(this, "已加入一条模拟到件数据", Toast.LENGTH_SHORT).show() }
 
     private fun chooseText() { AlertDialog.Builder(this).setTitle("选择到件截图").setMessage("便取件只会读取你选择的截图，用于识别商品信息和取件码，不会读取其他照片。").setNegativeButton("取消", null).setPositiveButton("选择截图") { _, _ -> startActivityForResult(Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI).apply { type = "image/*" }, 9) }.show() }
@@ -69,12 +70,12 @@ class MainActivity : Activity() {
     private fun refresh() { list.removeAllViews(); completedList.removeAllViews(); val completed = parcels.filter { it.found }; summary.text = "待取件 · ${parcels.size - completed.size} 件"; parcels.filterNot { it.found }.forEach { addParcelRow(list, it, false) }; completed.forEach { addParcelRow(completedList, it, true) } }
     private fun addParcelRow(container: LinearLayout, parcel: Parcel, checked: Boolean) {
         val card = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; setPadding(12, 12, 12, 12); background = rounded(if (checked) Color.rgb(241,255,248) else Color.WHITE, 22f) }
-        val product = TextView(this).apply { text = "件"; textSize = 20f; gravity = Gravity.CENTER; setTextColor(Color.rgb(66,99,235)); background = rounded(if (checked) Color.rgb(225,248,235) else Color.rgb(246,243,231), 18f); layoutParams = LinearLayout.LayoutParams(74, 92).apply { rightMargin = 12 } }
+        val product = TextView(this).apply { text = "件"; textSize = 20f; gravity = Gravity.CENTER; setTextColor(Color.rgb(66,99,235)); background = rounded(if (checked) Color.rgb(225,248,235) else Color.rgb(246,243,231), 18f); layoutParams = LinearLayout.LayoutParams(dp(74), dp(92)).apply { rightMargin = dp(12) } }
         val info = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f) }
         info.addView(TextView(this).apply { text = parcel.name; textSize = 15f; setTypeface(null, 1); setTextColor(Color.rgb(23,35,61)) })
         info.addView(TextView(this).apply { text = "截图识别 · 请核对"; textSize = 11f; setTextColor(Color.rgb(104,119,146)); setPadding(0, 5, 0, 10) })
         info.addView(TextView(this).apply { text = parcel.code; textSize = 16f; setTypeface(null, 1); setTextColor(Color.rgb(49,76,126)) })
-        val action = Button(this).apply { text = if (checked) "✓ 已找到" else "□ 已找到"; textSize = 11f; setTextColor(if (checked) Color.rgb(17,132,91) else Color.rgb(64,81,112)); background = rounded(if (checked) Color.rgb(218,248,233) else Color.rgb(246,248,252), 12f); setPadding(8, 4, 8, 4); setOnClickListener { parcel.found = !parcel.found; save(); refresh() }; layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, 42).apply { leftMargin = 8 } }
+        val action = Button(this).apply { text = if (checked) "✓ 已找到" else "□ 已找到"; textSize = 11f; setSingleLine(true); minWidth = 0; minimumWidth = 0; setTextColor(if (checked) Color.rgb(17,132,91) else Color.rgb(64,81,112)); background = rounded(if (checked) Color.rgb(218,248,233) else Color.rgb(246,248,252), 12f); setPadding(dp(6), dp(4), dp(6), dp(4)); setOnClickListener { parcel.found = !parcel.found; save(); refresh() }; layoutParams = LinearLayout.LayoutParams(dp(94), dp(42)).apply { leftMargin = dp(8) } }
         card.addView(product); card.addView(info); card.addView(action)
         container.addView(card, LinearLayout.LayoutParams(-1, ViewGroup.LayoutParams.WRAP_CONTENT).apply { bottomMargin = 12 })
     }
