@@ -14,6 +14,9 @@ import android.view.Gravity
 import android.view.ViewGroup
 import android.widget.*
 import android.app.AlertDialog
+import android.content.BroadcastReceiver
+import android.content.Context
+import android.content.IntentFilter
 import android.graphics.drawable.GradientDrawable
 import java.util.regex.Pattern
 
@@ -25,8 +28,11 @@ class MainActivity : Activity() {
     private lateinit var summary: TextView
     private val storage by lazy { getSharedPreferences("parcels", MODE_PRIVATE) }
     private val codePattern = Pattern.compile("(?<![A-Z0-9])[A-Z]{1,3}\\s*[-—–－]?\\s*\\d{1,4}\\s*[-—–－]\\s*\\d{1,4}(?![A-Z0-9])")
+    private val updateReceiver = object : BroadcastReceiver() { override fun onReceive(context: Context?, intent: Intent?) { parcels.clear(); load(); refresh() } }
 
     override fun onCreate(savedInstanceState: Bundle?) { super.onCreate(savedInstanceState); load(); render() }
+    override fun onResume() { super.onResume(); registerReceiver(updateReceiver, IntentFilter(ParcelNotificationListener.ACTION_UPDATED), RECEIVER_NOT_EXPORTED) }
+    override fun onPause() { unregisterReceiver(updateReceiver); super.onPause() }
 
     private fun render() {
         val root = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(24, 22, 24, 18); setBackgroundColor(Color.rgb(247,248,252)) }
