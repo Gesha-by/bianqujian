@@ -147,9 +147,12 @@ class MainActivity : Activity() {
     private fun extractOcrTracking(text: String): String = Regex("(?<![A-Z0-9])(?:SF|YT|ZT|JD|JT)?[A-Z0-9]{8,20}(?![A-Z0-9])").find(text.uppercase())?.value ?: "未知运单号"
     private fun extractOcrName(text: String): String {
         val blocked = Regex("收货地址|快递员|取件码|订单编号|待取件|已取件|已签收|复制|分享取件|拨打电话|导航|支持退换货|号\\s*码保护|^\\d{1,2}:\\d{2}|^\\d{1,3}%?$|^5G$|^Wi-?Fi$|^¥?[\\d.]+$")
-        return text.lineSequence().map { it.trim() }
-            .filter { it.length in 4..60 && !blocked.containsMatchIn(it) && it.any { ch -> ch in '\u4e00'..'\u9fff' } }
-            .maxByOrNull { it.length } ?: "未提供商品名"
+        val lines = text.lineSequence().map { it.trim() }.filter { it.isNotEmpty() }.toList()
+        val productArea = lines.dropWhile { !it.contains("订单编号") }.drop(1)
+        val candidates = (productArea + lines).distinct()
+            .filter { it.length in 4..80 && !blocked.containsMatchIn(it) && it.any { ch -> ch in '\u4e00'..'\u9fff' } }
+            .filterNot { it.contains("全店回购") || it.contains("本店已拼") || it.contains("销量") || it.contains("退货包运费") }
+        return candidates.maxByOrNull { candidate -> (if (productArea.contains(candidate)) 1000 else 0) + candidate.count { it in '\u4e00'..'\u9fff' } * 10 + candidate.length } ?: "商品名待确认"
     }
     private fun refresh() {
         list.removeAllViews()
