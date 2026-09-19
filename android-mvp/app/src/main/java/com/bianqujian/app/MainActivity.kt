@@ -31,6 +31,7 @@ import java.util.Locale
 import java.io.File
 import java.io.FileOutputStream
 import android.graphics.BitmapFactory
+import android.graphics.Bitmap
 
 enum class ParcelStatus { IN_TRANSIT, READY, PICKED_UP, CANCELLED }
 data class Parcel(val code: String, val name: String = "未提供商品名", var found: Boolean = false, var status: ParcelStatus = ParcelStatus.READY, val source: String = "截图识别", val location: String = "未识别位置", val parcelType: String = "未知类型", val carrier: String = "未知快递", val trackingNumber: String = "未知运单号", val updatedAt: String = "未知时间", val imagePath: String = "")
@@ -144,8 +145,30 @@ class MainActivity : Activity() {
 
     private fun chooseText() { AlertDialog.Builder(this).setTitle("选择到件截图").setMessage("便取件只会读取你选择的截图，用于识别商品信息和取件码，不会读取其他照片。").setNegativeButton("取消", null).setPositiveButton("选择截图") { _, _ -> startActivityForResult(Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI).apply { type = "image/*" }, 9) }.show() }
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) { super.onActivityResult(requestCode, resultCode, data); if (requestCode == 9 && resultCode == RESULT_OK) data?.data?.let { importImage(it) } }
-    private fun importImage(uri: Uri) { val image = InputImage.fromFilePath(this, uri); val recognizer = TextRecognition.getClient(ChineseTextRecognizerOptions.Builder().build()); recognizer.process(image).addOnSuccessListener { result -> val rawText = result.text; val text = rawText.uppercase().replace('－', '-').replace('—', '-').replace('–', '-'); val normalizedText = text.replace(Regex("\\s+"), ""); val found = codePattern.matcher(normalizedText); val location = extractOcrLocation(rawText); val carrier = extractOcrCarrier(rawText); val tracking = extractOcrTracking(rawText); val updatedAt = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.CHINA).format(Date()); val imagePath = saveImportedImage(uri); var added = 0; var updated = 0; while (found.find()) { val code = found.group().replace(Regex("\\s+"), "").replace(Regex("-+"), "-"); val item = Parcel(code, extractOcrName(rawText), false, ParcelStatus.READY, "截图识别", location, "普通快递", carrier, tracking, updatedAt, imagePath); val index = parcels.indexOfFirst { it.code == code }; if (index < 0) { parcels.add(item); added++ } else { parcels[index] = item; updated++ } }; save(); refresh(); val message = when { added == 0 && updated == 0 -> "未识别到取件码，请确认截图包含类似 B8-5-153 或 A-302-8 的编码"; updated > 0 -> "识别完成，已更新 $updated 个包裹，商品图和物流信息已保存"; else -> "识别完成，已导入 $added 个取件码，商品图和物流信息已保存" }; Toast.makeText(this, message, Toast.LENGTH_LONG).show() }.addOnFailureListener { Toast.makeText(this, "图片识别失败，请重试", Toast.LENGTH_LONG).show() } }
-    private fun saveImportedImage(uri: Uri): String { val file = File(filesDir, "parcel_${System.currentTimeMillis()}.jpg"); contentResolver.openInputStream(uri).use { input -> FileOutputStream(file).use { output -> input?.copyTo(output) } }; return file.absolutePath }
+    private fun importImage(uri: Uri) { val image = InputImage.fromFilePath(this, uri); val recognizer = TextRecognition.getClient(ChineseTextRecognizerOptions.Builder().build()); recognizer.process(image).addOnSuccessListener { result -> val rawText = result.text; val text = rawText.uppercase().replace('－', '-').replace('—', '-').replace('–', '-'); val normalizedText = text.replace(Regex("\\s+"), ""); val found = codePattern.matcher(normalizedText); val location = extractOcrLocation(rawText); val carrier = extractOcrCarrier(rawText); val tracking = extractOcrTracking(rawText); val updatedAt = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.CHINA).format(Date()); val imagePath = saveProductImage(uri, result); var added = 0; var updated = 0; while (found.find()) { val code = found.group().replace(Regex("\\s+"), "").replace(Regex("-+"), "-"); val item = Parcel(code, extractOcrName(rawText), false, ParcelStatus.READY, "截图识别", location, "普通快递", carrier, tracking, updatedAt, imagePath); val index = parcels.indexOfFirst { it.code == code }; if (index < 0) { parcels.add(item); added++ } else { parcels[index] = item; updated++ } }; save(); refresh(); val message = when { added == 0 && updated == 0 -> "未识别到取件码，请确认截图包含类似 B8-5-153 或 A-302-8 的编码"; updated > 0 -> "识别完成，已更新 $updated 个包裹，商品图和物流信息已保存"; else -> "识别完成，已导入 $added 个取件码，商品图和物流信息已保存" }; Toast.makeText(this, message, Toast.LENGTH_LONG).show() }.addOnFailureListener { Toast.makeText(this, "图片识别失败，请重试", Toast.LENGTH_LONG).show() } }
+    private fun saveProductImage(uri: Uri, result: com.google.mlkit.vision.text.Text): String {
+        val source = contentResolver.openInputStream(uri)?.use { BitmapFactory.decodeStream(it) }
+        val file = File(filesDir, "product_${System.currentTimeMillis()}.jpg")
+        if (source == null) return ""
+        val anchor = result.textBlocks.flatMap { it.lines }.firstOrNull { line ->
+            val value = line.text.uppercase()
+            value.contains("快递") || value.contains("运单") || value.contains("${extractOcrTracking(result.text)}")
+        }
+        val box = anchor?.boundingBox
+        val crop = if (box != null) {
+            val size = (box.height() * 2.8f).toInt().coerceAtLeast(80)
+            val left = 0
+            val top = (box.centerY() - size / 2).coerceIn(0, (source.height - 1).coerceAtLeast(0))
+            val width = size.coerceAtMost(source.width)
+            val height = size.coerceAtMost(source.height - top)
+            Bitmap.createBitmap(source, left, top, width, height)
+        } else null
+        (crop ?: Bitmap.createBitmap(1, 1, Bitmap.Config.ARGB_8888)).compress(Bitmap.CompressFormat.JPEG, 90, FileOutputStream(file))
+        if (crop == null) file.delete()
+        source.recycle()
+        crop?.recycle()
+        return if (crop == null) "" else file.absolutePath
+    }
     private fun extractOcrLocation(text: String): String = Regex("(?:取件点|驿站|收货地址|地址)[：:]?\\s*([^\\n]{4,60})").find(text)?.groupValues?.get(1)?.trim() ?: "未识别位置"
     private fun extractOcrCarrier(text: String): String = Regex("(顺丰|中通|圆通|申通|韵达|极兔|邮政|京东|德邦|菜鸟)").find(text)?.groupValues?.get(1) ?: "未知快递"
     private fun extractOcrTracking(text: String): String = Regex("(?<![A-Z0-9])(?:SF|YT|ZT|JD|JT)?[A-Z0-9]{8,20}(?![A-Z0-9])").find(text.uppercase())?.value ?: "未知运单号"
