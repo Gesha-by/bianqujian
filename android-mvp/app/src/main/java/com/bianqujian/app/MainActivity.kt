@@ -26,7 +26,7 @@ import android.graphics.drawable.GradientDrawable
 import java.util.regex.Pattern
 
 enum class ParcelStatus { IN_TRANSIT, READY, PICKED_UP, CANCELLED }
-data class Parcel(val code: String, val name: String = "未提供商品名", var found: Boolean = false, var status: ParcelStatus = ParcelStatus.WAITING)
+data class Parcel(val code: String, val name: String = "未提供商品名", var found: Boolean = false, var status: ParcelStatus = ParcelStatus.READY)
 
 class MainActivity : Activity() {
     private val parcels = mutableListOf<Parcel>()
