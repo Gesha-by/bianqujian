@@ -88,7 +88,7 @@ class MainActivity : Activity() {
         val saved = storage.getString("pdd_open_mode", null)
         if (saved == "always") { openPdd(); return }
         val labels = arrayOf("记住此设置", "以后都打开", "仅打开一次", "不打开")
-        AlertDialog.Builder(this).setTitle("打开拼多多扫描取件").setMessage("请选择这次及以后如何处理取件操作").setSingleChoiceItems(labels, -1) { dialog, which ->
+        AlertDialog.Builder(this).setTitle("打开拼多多扫描取件").setItems(labels) { dialog, which ->
             when (which) {
                 0 -> { storage.edit().putString("pdd_open_mode", "remember").apply(); openPdd(); dialog.dismiss() }
                 1 -> { storage.edit().putString("pdd_open_mode", "always").apply(); openPdd(); dialog.dismiss() }
