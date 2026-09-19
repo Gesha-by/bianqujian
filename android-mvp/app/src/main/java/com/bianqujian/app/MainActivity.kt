@@ -59,8 +59,8 @@ class MainActivity : Activity() {
         completedList = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
         addStatusTabs()
         summary = TextView(this).apply { textSize = 14f; setTextColor(Color.rgb(23,35,61)); setTypeface(null, 1); setPadding(12, 18, 2, 8) }
-        val handoffNote = TextView(this).apply { text = "取到包裹后，打开拼多多完成扫码出库"; textSize = 12f; setTextColor(Color.rgb(92,103,126)); setPadding(2, 10, 2, 4) }
-        val handoff = Button(this).apply { text = "打开拼多多扫码出库"; textSize = 14f; setTextColor(Color.WHITE); background = rounded(Color.rgb(23,35,61), 24f); elevation = 0f; stateListAnimator = null; setPadding(16, 16, 16, 16); setOnClickListener { Toast.makeText(this@MainActivity, "请在拼多多完成扫码出库", Toast.LENGTH_SHORT).show() } }
+        val handoffNote = TextView(this).apply { text = "取到包裹后，再进行最后一步"; textSize = 12f; setTextColor(Color.rgb(92,103,126)); setPadding(2, 16, 2, 6) }
+        val handoff = Button(this).apply { text = "打开拼多多扫描取件"; textSize = 14f; setTextColor(Color.WHITE); background = rounded(Color.rgb(23,35,61), 24f); elevation = 0f; stateListAnimator = null; setPadding(16, 16, 16, 16); setOnClickListener { Toast.makeText(this@MainActivity, "请在拼多多完成扫描取件", Toast.LENGTH_SHORT).show() } }
         root.addView(title); root.addView(hero); root.addView(import, LinearLayout.LayoutParams(-1, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = 14 }); root.addView(simulate, LinearLayout.LayoutParams(-1, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = 7 }); root.addView(statusTabs); root.addView(summary); root.addView(list); root.addView(handoffNote); root.addView(handoff, LinearLayout.LayoutParams(-1, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = 6 }); setContentView(root); refresh()
     }
 
