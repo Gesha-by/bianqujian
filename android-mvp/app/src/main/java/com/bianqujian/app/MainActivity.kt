@@ -26,6 +26,16 @@ import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
 import android.Manifest
 import android.location.LocationManager
+import android.location.Location
+import android.location.LocationListener
+import android.os.Handler
+import android.os.Looper
+import org.json.JSONObject
+import java.net.HttpURLConnection
+import java.net.URL
+import java.net.URLEncoder
+import java.io.BufferedReader
+import java.io.InputStreamReader
 import android.graphics.drawable.GradientDrawable
 import java.util.regex.Pattern
 import java.text.SimpleDateFormat
@@ -50,13 +60,19 @@ class MainActivity : Activity() {
     private lateinit var statusTabs: LinearLayout
     private var selectedStatus = ParcelStatus.READY
     private var locationSummary = "定位未授权，无法估算取件时间"
+    private var stationSummary = ""
+    private var locationQueryInFlight = false
     private lateinit var summary: TextView
     private val storage by lazy { getSharedPreferences("parcels", MODE_PRIVATE) }
     private val codePattern = Pattern.compile("(?<![A-Z0-9])[A-Z]{1,3}\\s*[-—–－]?\\s*\\d{1,4}(?:\\s*[-—–－]\\s*\\d{1,4}){1,2}(?![A-Z0-9])")
     private val updateReceiver = object : BroadcastReceiver() { override fun onReceive(context: Context?, intent: Intent?) { parcels.clear(); load(); refresh() } }
 
     override fun onCreate(savedInstanceState: Bundle?) { super.onCreate(savedInstanceState); load(); render() }
-    override fun onResume() { super.onResume(); registerReceiver(updateReceiver, IntentFilter(ParcelNotificationListener.ACTION_UPDATED), RECEIVER_NOT_EXPORTED) }
+    override fun onResume() {
+        super.onResume()
+        registerReceiver(updateReceiver, IntentFilter(ParcelNotificationListener.ACTION_UPDATED), RECEIVER_NOT_EXPORTED)
+        if (hasLocationPermission() && stationSummary.isBlank() && !locationQueryInFlight) queryNearbyStation()
+    }
     override fun onPause() { unregisterReceiver(updateReceiver); super.onPause() }
 
     private fun render() {
@@ -71,14 +87,14 @@ class MainActivity : Activity() {
         val hero = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(18, 17, 18, 17); background = rounded(Color.rgb(31,45,70), 28f) }
         hero.addView(TextView(this).apply { text = "下楼前，先看清楚要找什么"; textSize = 12f; setTextColor(Color.WHITE) })
         hero.addView(TextView(this).apply { text = "我的取件点 · ${parcels.firstOrNull { it.location != "未识别位置" }?.location ?: "待识别"}"; textSize = 20f; setTextColor(Color.WHITE); setTypeface(null, 1); setPadding(0, 7, 0, 11) })
-        hero.addView(TextView(this).apply { text = "● $locationSummary"; textSize = 11f; setTextColor(Color.WHITE); background = rounded(Color.argb(45,255,255,255), 16f); setPadding(10, 7, 10, 7) })
+        hero.addView(TextView(this).apply { text = "● ${if (stationSummary.isBlank()) locationSummary else stationSummary}"; textSize = 11f; setTextColor(Color.WHITE); background = rounded(Color.argb(45,255,255,255), 16f); setPadding(10, 7, 10, 7) })
         val import = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; setPadding(14, 11, 8, 11); background = rounded(Color.WHITE, 22f) }
         import.addView(TextView(this).apply { text = "导入订单长截图\n识别后确认，再加入找件清单"; textSize = 12f; setTextColor(Color.rgb(42,55,82)); layoutParams = LinearLayout.LayoutParams(0, -2, 1f) })
         import.addView(Button(this).apply { text = "识别图片"; textSize = 11f; setTextColor(Color.rgb(66,99,235)); background = rounded(Color.rgb(237,241,255), 16f); elevation = 0f; stateListAnimator = null; setOnClickListener { chooseText() } })
         val simulate = Button(this).apply { text = "模拟到件数据（测试）"; textSize = 10f; setTextColor(Color.rgb(104,119,146)); background = rounded(Color.rgb(242,245,250), 16f); elevation = 0f; stateListAnimator = null; setOnClickListener { simulateArrival() }; visibility = if ((applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0) View.VISIBLE else View.GONE }
         val simulatePicked = Button(this).apply { text = "模拟拼多多已取件通知（测试）"; textSize = 10f; setTextColor(Color.rgb(104,119,146)); background = rounded(Color.rgb(242,245,250), 16f); elevation = 0f; stateListAnimator = null; setOnClickListener { simulatePickedUpNotification() }; visibility = if ((applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0) View.VISIBLE else View.GONE }
         val autoSync = Button(this).apply { text = if (isNotificationAccessEnabled()) "通知自动同步已开启" else "开启通知自动同步"; textSize = 11f; setTextColor(Color.rgb(66,99,235)); background = rounded(Color.rgb(237,241,255), 16f); elevation = 0f; stateListAnimator = null; setOnClickListener { startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)) } }
-        val locationButton = Button(this).apply { text = if (hasLocationPermission()) "定位已授权 · 匹配附近驿站" else "授权定位 · 匹配附近驿站"; textSize = 11f; setTextColor(Color.rgb(66,99,235)); background = rounded(Color.rgb(237,241,255), 16f); elevation = 0f; stateListAnimator = null; setOnClickListener { requestLocationPermission() } }
+        val locationButton = Button(this).apply { text = if (hasLocationPermission()) "定位已授权 · 查询附近驿站" else "授权定位 · 查询附近驿站"; textSize = 11f; setTextColor(Color.rgb(66,99,235)); background = rounded(Color.rgb(237,241,255), 16f); elevation = 0f; stateListAnimator = null; setOnClickListener { requestLocationPermission() } }
         statusTabs = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; setPadding(0, 14, 0, 4) }
         list = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
         completedList = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
@@ -160,13 +176,110 @@ class MainActivity : Activity() {
     private fun hasLocationPermission() = checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED || checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
     private fun requestLocationPermission() {
         if (hasLocationPermission()) {
-            locationSummary = "定位已授权 · 附近驿站营业时间待查询"
+            locationSummary = "正在查询附近驿站和营业时间"
             render()
+            queryNearbyStation()
         } else requestPermissions(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION), 20)
     }
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        if (requestCode == 20) { locationSummary = if (grantResults.any { it == PackageManager.PERMISSION_GRANTED }) "定位已授权 · 附近驿站营业时间待查询" else "未授权定位，无法估算取件时间"; render() }
+        if (requestCode == 20) { if (grantResults.any { it == PackageManager.PERMISSION_GRANTED }) { locationSummary = "正在查询附近驿站和营业时间"; render(); queryNearbyStation() } else { locationSummary = "未授权定位，无法估算取件时间"; render() } }
+    }
+    private fun queryNearbyStation() {
+        if (!hasLocationPermission() || BuildConfig.AMAP_WEB_KEY.isBlank()) { locationSummary = "缺少定位权限或高德Key，无法查询驿站"; render(); return }
+        locationQueryInFlight = true
+        locationSummary = "正在获取实时定位"
+        render()
+        val manager = getSystemService(LOCATION_SERVICE) as LocationManager
+        val providers = listOf(LocationManager.GPS_PROVIDER, LocationManager.NETWORK_PROVIDER, LocationManager.PASSIVE_PROVIDER)
+            .filter { runCatching { manager.isProviderEnabled(it) }.getOrDefault(false) }
+        if (providers.isEmpty()) {
+            finishLocationQuery("系统定位服务未开启，请先打开手机定位")
+            return
+        }
+        val handler = Handler(Looper.getMainLooper())
+        var delivered = false
+        val listener = object : LocationListener {
+            override fun onLocationChanged(location: Location) {
+                if (delivered) return
+                delivered = true
+                manager.removeUpdates(this)
+                handler.removeCallbacksAndMessages(null)
+                queryAmapWithLocation(location)
+            }
+        }
+        val cached = providers.mapNotNull { provider -> runCatching { manager.getLastKnownLocation(provider) }.getOrNull() }
+            .maxByOrNull { it.time }
+        if (cached != null) {
+            delivered = true
+            queryAmapWithLocation(cached)
+            return
+        }
+        try {
+            providers.forEach { provider -> manager.requestLocationUpdates(provider, 0L, 0f, listener, Looper.getMainLooper()) }
+            handler.postDelayed({
+                if (!delivered) {
+                    delivered = true
+                    manager.removeUpdates(listener)
+                    finishLocationQuery("暂时没有可用定位，请打开系统定位后重试")
+                }
+            }, 10000L)
+        } catch (_: Exception) {
+            manager.removeUpdates(listener)
+            finishLocationQuery("无法获取实时定位，请检查系统定位权限")
+        }
+    }
+
+    private fun queryAmapWithLocation(location: Location) {
+        Thread {
+            try {
+                val stationText = parcels.firstOrNull { it.location != "未识别位置" }?.location ?: "妈妈驿站"
+                val keyword = stationText.replace(Regex("(文具店后面|后面|代收点|取件点)"), "").trim().ifBlank { "妈妈驿站" }
+                val query = URLEncoder.encode(keyword, "UTF-8")
+                val url = "https://restapi.amap.com/v5/place/around?key=${BuildConfig.AMAP_WEB_KEY}&location=${location.longitude},${location.latitude}&keywords=$query&radius=5000&page_size=10&show_fields=business,opentime_today,opentime_week"
+                val connection = (URL(url).openConnection() as HttpURLConnection).apply { requestMethod = "GET"; connectTimeout = 8000; readTimeout = 8000; setRequestProperty("Accept", "application/json") }
+                val body = BufferedReader(InputStreamReader(connection.inputStream, Charsets.UTF_8)).use { it.readText() }
+                val root = JSONObject(body)
+                if (root.optString("status") != "1") throw IllegalStateException(root.optString("info", "高德查询失败"))
+                val pois = root.optJSONArray("pois") ?: throw IllegalStateException("附近没有匹配驿站")
+                val normalizedKeyword = keyword.replace(" ", "")
+                var selected: JSONObject? = null
+                var bestScore = -1
+                for (i in 0 until pois.length()) {
+                    val poi = pois.optJSONObject(i) ?: continue
+                    val name = poi.optString("name"); val address = poi.optString("address")
+                    val score = (if (name.replace(" ", "").contains(normalizedKeyword)) 100 else 0) + (if (name.contains("驿站")) 20 else 0) + (if (address.contains("妈妈")) 10 else 0)
+                    if (score > bestScore) { bestScore = score; selected = poi }
+                }
+                val poi = selected ?: pois.optJSONObject(0) ?: throw IllegalStateException("没有匹配驿站")
+                val name = poi.optString("name", keyword)
+                val distance = poi.optString("distance").ifBlank { "未知" }
+                val business = poi.optJSONObject("business")
+                val today = business?.optString("opentime_today").orEmpty()
+                val week = business?.optString("opentime_week").orEmpty()
+                val hours = today.ifBlank { week }.ifBlank { "营业时间未知" }
+                runOnUiThread {
+                    locationQueryInFlight = false
+                    stationSummary = "$name · ${distance}米 · $hours"
+                    locationSummary = "定位已授权"
+                    render()
+                }
+            } catch (error: Exception) {
+                runOnUiThread {
+                    locationQueryInFlight = false
+                    stationSummary = "驿站匹配失败 · 营业时间未知"
+                    locationSummary = "定位已授权"
+                    render()
+                    Toast.makeText(this, "无法查询附近驿站：${error.message ?: "网络不可用"}", Toast.LENGTH_LONG).show()
+                }
+            }
+        }.start()
+    }
+
+    private fun finishLocationQuery(message: String) {
+        locationQueryInFlight = false
+        locationSummary = message
+        render()
     }
     private fun simulateArrival() {
         val code = "A-302-8"

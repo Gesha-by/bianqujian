@@ -13,6 +13,12 @@ test('安卓 MVP 工程包含入口、清单和本地持久化逻辑', () => {
   assert.match(code, /ACCESS_FINE_LOCATION/);
   assert.match(code, /requestLocationPermission/);
   assert.doesNotMatch(code, /预计 3 分钟/);
+  assert.match(code, /AMAP_WEB_KEY/);
+  assert.match(code, /restapi\.amap\.com\/v5\/place\/around/);
+  assert.match(code, /opentime_today/);
+  assert.match(code, /requestLocationUpdates/);
+  assert.match(code, /LocationListener/);
+  assert.match(code, /queryAmapWithLocation/);
   assert.match(code, /北区\|妈妈驿站\|驿站/);
   assert.match(code, /extractOcrTracking/);
   assert.match(code, /未提供商品名/);
@@ -48,6 +54,7 @@ test('安卓 MVP 工程包含入口、清单和本地持久化逻辑', () => {
   const wrapper = fs.readFileSync('android-mvp/gradle/wrapper/gradle-wrapper.properties', 'utf8');
   assert.match(wrapper, /gradle-9\.3\.0-bin\.zip/);
   const manifest = fs.readFileSync('android-mvp/app/src/main/AndroidManifest.xml', 'utf8');
+  assert.match(manifest, /android\.permission\.INTERNET/);
   assert.match(manifest, /BIND_NOTIFICATION_LISTENER_SERVICE/);
   assert.match(manifest, /<queries>/);
   assert.match(manifest, /android:name="com\.xunmeng\.pinduoduo"/);
