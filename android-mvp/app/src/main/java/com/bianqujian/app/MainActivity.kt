@@ -9,6 +9,7 @@ import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.text.chinese.ChineseTextRecognizerOptions
 import com.google.mlkit.vision.text.TextRecognition
 import android.provider.OpenableColumns
+import android.provider.MediaStore
 import android.view.Gravity
 import android.view.ViewGroup
 import android.widget.*
@@ -33,7 +34,7 @@ class MainActivity : Activity() {
         hero.addView(TextView(this).apply { text = "下楼前，先看清楚要找什么"; textSize = 14f; setTextColor(Color.WHITE) })
         hero.addView(TextView(this).apply { text = "我的取件点 · 暂无包裹"; textSize = 25f; setTextColor(Color.WHITE); setTypeface(null, 1); setPadding(0, 8, 0, 14) })
         hero.addView(TextView(this).apply { text = "● 暂无待取件"; textSize = 13f; setTextColor(Color.WHITE); background = rounded(Color.argb(45,255,255,255), 18f); setPadding(12, 9, 12, 9) })
-        val import = Button(this).apply { text = "导入到件长截图"; textSize = 16f; setTextColor(Color.rgb(25,38,70)); background = rounded(Color.WHITE, 18f); setOnClickListener { chooseText() }; setPadding(16, 18, 16, 18) }
+        val import = Button(this).apply { text = "从相册导入到件长截图"; textSize = 16f; setTextColor(Color.rgb(25,38,70)); background = rounded(Color.WHITE, 18f); setOnClickListener { chooseText() }; setPadding(16, 18, 16, 18) }
         summary = TextView(this).apply { textSize = 16f; setTextColor(Color.rgb(20,35,70)); setPadding(0, 22, 0, 10) }
         list = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
         val handoff = TextView(this).apply { text = "导入包裹后开始找件\n\n找到包裹后，再打开拼多多扫码出库"; textSize = 16f; setTextColor(Color.WHITE); setPadding(20, 20, 20, 20); background = rounded(Color.rgb(20,35,70), 24f) }
@@ -42,7 +43,7 @@ class MainActivity : Activity() {
 
     private fun rounded(color: Int, radius: Float) = GradientDrawable().apply { setColor(color); cornerRadius = radius }
 
-    private fun chooseText() { startActivityForResult(Intent(Intent.ACTION_OPEN_DOCUMENT).apply { type = "image/*"; addCategory(Intent.CATEGORY_OPENABLE); putExtra(Intent.EXTRA_ALLOW_MULTIPLE, false) }, 9) }
+    private fun chooseText() { startActivityForResult(Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI).apply { type = "image/*" }, 9) }
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) { super.onActivityResult(requestCode, resultCode, data); if (requestCode == 9 && resultCode == RESULT_OK) data?.data?.let { importImage(it) } }
     private fun importImage(uri: Uri) { val image = InputImage.fromFilePath(this, uri); val recognizer = TextRecognition.getClient(ChineseTextRecognizerOptions.Builder().build()); recognizer.process(image).addOnSuccessListener { result -> val found = codePattern.matcher(result.text); var added = 0; while (found.find()) { val code = found.group().replace(" ", "-"); if (parcels.none { it.code == code }) { parcels.add(Parcel(code)); added++ } }; save(); refresh(); Toast.makeText(this, "识别完成，已导入 $added 个取件码", Toast.LENGTH_SHORT).show() }.addOnFailureListener { Toast.makeText(this, "图片识别失败，请重试", Toast.LENGTH_LONG).show() } }
     private fun refresh() { list.removeAllViews(); val found = parcels.count { it.found }; summary.text = if (parcels.isEmpty()) "暂无包裹，请先导入到件截图" else "已找到 $found / ${parcels.size}"; parcels.forEach { parcel -> val row = CheckBox(this).apply { text = "${parcel.code} · ${parcel.name}"; textSize = 17f; isChecked = parcel.found; setPadding(8, 18, 8, 18); setOnCheckedChangeListener { _, checked -> parcel.found = checked; save(); summary.text = "已找到 ${parcels.count { it.found }} / ${parcels.size}" } }; list.addView(row) } }
