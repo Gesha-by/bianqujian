@@ -64,7 +64,7 @@ class MainActivity : Activity() {
         }
         root.requestApplyInsets()
         val title = TextView(this).apply { text = "便取件"; textSize = 22f; setTextColor(Color.rgb(23,35,61)); setTypeface(null, 1); setPadding(2, 8, 2, 16) }
-        val hero = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(18, 17, 18, 17); background = rounded(Color.rgb(66,99,235), 28f) }
+        val hero = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(18, 17, 18, 17); background = rounded(Color.rgb(31,45,70), 28f) }
         hero.addView(TextView(this).apply { text = "下楼前，先看清楚要找什么"; textSize = 12f; setTextColor(Color.WHITE) })
         hero.addView(TextView(this).apply { text = "我的取件点 · ${parcels.firstOrNull { it.location != "未识别位置" }?.location ?: "待识别"}"; textSize = 20f; setTextColor(Color.WHITE); setTypeface(null, 1); setPadding(0, 7, 0, 11) })
         hero.addView(TextView(this).apply { text = "● 今天取件 · 预计 3 分钟"; textSize = 11f; setTextColor(Color.WHITE); background = rounded(Color.argb(45,255,255,255), 16f); setPadding(10, 7, 10, 7) })
