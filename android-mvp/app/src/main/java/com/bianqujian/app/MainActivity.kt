@@ -56,7 +56,7 @@ class MainActivity : Activity() {
     override fun onPause() { unregisterReceiver(updateReceiver); super.onPause() }
 
     private fun render() {
-        val root = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(20, 18, 20, 16); setBackgroundColor(Color.rgb(247,248,252)) }
+        val root = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(20, 46, 20, 16); setBackgroundColor(Color.rgb(247,248,252)) }
         val title = TextView(this).apply { text = "便取件"; textSize = 22f; setTextColor(Color.rgb(23,35,61)); setTypeface(null, 1); setPadding(2, 8, 2, 16) }
         val hero = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(18, 17, 18, 17); background = rounded(Color.rgb(66,99,235), 28f) }
         hero.addView(TextView(this).apply { text = "下楼前，先看清楚要找什么"; textSize = 12f; setTextColor(Color.WHITE) })
