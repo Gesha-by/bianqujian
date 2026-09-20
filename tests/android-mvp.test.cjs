@@ -171,4 +171,14 @@ test('安卓 MVP 工程包含入口、清单和本地持久化逻辑', () => {
     // Tab 切换带方向感
     assert.match(code, /showPage\(home: Boolean, instant: Boolean/);
     assert.match(code, /PILL_DURATION = 280/);
+    // 防撕裂：两页在 FrameLayout 中叠放，新页不透明置顶滑入、硬件层加速
+    assert.match(code, /val pageContainer = FrameLayout\(this\)/);
+    assert.match(code, /incoming\.bringToFront\(\)/);
+    assert.match(code, /incoming\.alpha = 1f/);
+    assert.match(code, /withLayer\(\)/);
+    assert.match(code, /View\.INVISIBLE/);
+    assert.match(code, /isVerticalScrollBarEnabled = false/);
+    assert.match(code, /setBackgroundColor\(Color\.rgb\(247,248,252\)\)/);
+    // 胶囊只平移不缩放，避免投影逐帧重算造成抖动
+    assert.doesNotMatch(code, /navPill\.scaleX/);
 });

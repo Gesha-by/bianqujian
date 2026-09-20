@@ -130,12 +130,15 @@ class MainActivity : Activity() {
         handoff = Button(this).apply { text = "第三步  打开拼多多扫描取件"; textSize = 15f; setTypeface(null, 1); setTextColor(Color.WHITE); background = rounded(Color.rgb(23,35,61), 24f); elevation = 0f; stateListAnimator = null; setPadding(16, 16, 16, 16); setOnClickListener { choosePddOpenMode() } }.also { it.tapFeedback() }
         val content = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(0, 0, 0, 12) }
         content.addView(title); content.addView(hero); content.addView(import, LinearLayout.LayoutParams(-1, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = 14 }); content.addView(autoSync, LinearLayout.LayoutParams(-1, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = 7 }); content.addView(simulate, LinearLayout.LayoutParams(-1, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = 7 }); content.addView(simulatePicked, LinearLayout.LayoutParams(-1, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = 7 }); content.addView(statusTabs); content.addView(summary); content.addView(list)
-        homePage = ScrollView(this).apply { isFillViewport = true; addView(content) }
+        homePage = ScrollView(this).apply { isFillViewport = true; isVerticalScrollBarEnabled = false; setBackgroundColor(Color.rgb(247,248,252)); addView(content) }
         minePage = buildMinePage()
-        minePage.visibility = View.GONE
+        minePage.visibility = View.INVISIBLE
         val bottomNav = buildBottomNavigation()
-        root.addView(homePage, LinearLayout.LayoutParams(-1, 0, 1f))
-        root.addView(minePage, LinearLayout.LayoutParams(-1, 0, 1f))
+        // 两页放在同一个 FrameLayout 里叠放：切换时只会重叠滑入滑出，不会上下分屏造成撕裂
+        val pageContainer = FrameLayout(this).apply { clipChildren = true }
+        pageContainer.addView(homePage, FrameLayout.LayoutParams(-1, -1))
+        pageContainer.addView(minePage, FrameLayout.LayoutParams(-1, -1))
+        root.addView(pageContainer, LinearLayout.LayoutParams(-1, 0, 1f))
         root.addView(handoffNote)
         root.addView(handoff, LinearLayout.LayoutParams(-1, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = 6 })
         root.addView(bottomNav, LinearLayout.LayoutParams(-1, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(10) })
@@ -169,7 +172,7 @@ class MainActivity : Activity() {
         val about = TextView(this).apply { text = "关于便取件"; textSize = 15f; setTextColor(Color.rgb(23,35,61)); setPadding(dp(16), dp(14), dp(16), dp(14)); background = rounded(Color.WHITE, 16f); setOnClickListener { showAboutDialog() } }
         content.addView(about)
         about.tapFeedback()
-        return ScrollView(this).apply { isFillViewport = true; addView(content) }
+        return ScrollView(this).apply { isFillViewport = true; isVerticalScrollBarEnabled = false; setBackgroundColor(Color.rgb(247,248,252)); addView(content) }
     }
 
     private fun showAboutDialog() {
@@ -241,42 +244,47 @@ class MainActivity : Activity() {
         updateTabsVisual(home)
         // 即时模式（重建页面/减少动态效果）：不做任何动画
         if (instant || reduceMotion) {
-            homePage.visibility = if (home) View.VISIBLE else View.GONE
-            minePage.visibility = if (home) View.GONE else View.VISIBLE
+            homePage.visibility = if (home) View.VISIBLE else View.INVISIBLE
+            minePage.visibility = if (home) View.INVISIBLE else View.VISIBLE
             homePage.alpha = 1f; minePage.alpha = 1f
             homePage.translationX = 0f; minePage.translationX = 0f
-            handoffNote.visibility = if (home) View.VISIBLE else View.GONE
-            handoff.visibility = if (home) View.VISIBLE else View.GONE
+            handoffNote.visibility = if (home) View.VISIBLE else View.INVISIBLE
+            handoff.visibility = if (home) View.VISIBLE else View.INVISIBLE
             handoffNote.alpha = 1f; handoff.alpha = 1f
             handoffNote.translationY = 0f; handoff.translationY = 0f
             updatePillPosition(home, instant = true)
             return
         }
-        // 方向感：进入“我的”从右侧滑入，返回“首页”从左侧滑入
+        // 方向感：进入“我的”新页从右侧不透明滑入，返回“首页”从左侧滑入。
+        // 新页全程不透明并置顶遮盖旧页，旧页只做小幅视差淡出，两页文字永不叠加，杜绝撕裂感。
         val outgoing = if (home) minePage else homePage
         val incoming = if (home) homePage else minePage
         val dir = if (home) -1 else 1
-        outgoing.animate().alpha(0f).translationX((-dir * dp(18)).toFloat())
+        incoming.bringToFront()
+        incoming.visibility = View.VISIBLE
+        incoming.alpha = 1f
+        incoming.translationX = (dir * dp(28)).toFloat()
+        incoming.animate().translationX(0f)
+            .setDuration(DUR_NORMAL.toLong()).setInterpolator(standardInterpolator)
+            .withLayer().start()
+        outgoing.animate().alpha(0f).translationX((-dir * dp(14)).toFloat())
             .setDuration(DUR_FAST.toLong()).setInterpolator(standardInterpolator)
+            .withLayer()
             .withEndAction {
-                outgoing.visibility = View.GONE
+                outgoing.visibility = View.INVISIBLE
                 outgoing.alpha = 1f; outgoing.translationX = 0f
             }.start()
-        incoming.visibility = View.VISIBLE
-        incoming.alpha = 0f; incoming.translationX = (dir * dp(24)).toFloat()
-        incoming.animate().alpha(1f).translationX(0f)
-            .setDuration(DUR_NORMAL.toLong()).setInterpolator(standardInterpolator).start()
-        // 底部操作区跟随页面淡入淡出
+        // 底部操作区跟随页面淡入淡出（INVISIBLE 占位，避免导航栏位置跳动）
         if (home) {
             listOf(handoffNote, handoff).forEach {
                 it.visibility = View.VISIBLE; it.alpha = 0f; it.translationY = dp(8).toFloat()
-                it.animate().alpha(1f).translationY(0f).setDuration(DUR_NORMAL.toLong()).setInterpolator(standardInterpolator).start()
+                it.animate().alpha(1f).translationY(0f).setDuration(DUR_NORMAL.toLong()).setInterpolator(standardInterpolator).withLayer().start()
             }
         } else {
             listOf(handoffNote, handoff).forEach {
                 it.animate().alpha(0f).translationY(dp(6).toFloat())
-                    .setDuration(DUR_FAST.toLong()).setInterpolator(standardInterpolator)
-                    .withEndAction { it.visibility = View.GONE; it.alpha = 1f; it.translationY = 0f }.start()
+                    .setDuration(DUR_FAST.toLong()).setInterpolator(standardInterpolator).withLayer()
+                    .withEndAction { it.visibility = View.INVISIBLE; it.alpha = 1f; it.translationY = 0f }.start()
             }
         }
         updatePillPosition(home)
@@ -302,27 +310,20 @@ class MainActivity : Activity() {
         if (instant || reduceMotion) {
             pillAnimator?.cancel()
             navPill.translationX = targetX
-            navPill.scaleX = 1f; navPill.scaleY = 1f
             return
         }
         pillAnimator?.cancel()
         val startX = navPill.translationX
-        val startScale = navPill.scaleX.coerceAtLeast(0.1f)
+        // 只做平移：缩放会让胶囊投影每帧重算，反而造成抖动和“撕裂感”
         pillAnimator = ValueAnimator.ofFloat(0f, 1f).apply {
             duration = PILL_DURATION.toLong()
             interpolator = iosSpringInterpolator
             addUpdateListener { animator ->
-                val t = animator.animatedValue as Float
-                navPill.translationX = startX + (targetX - startX) * t
-                val scale = startScale + (1f - startScale) * t - 0.025f * kotlin.math.sin(t * Math.PI).toFloat()
-                navPill.scaleX = scale.coerceIn(0.96f, 1.04f)
-                navPill.scaleY = scale.coerceIn(0.96f, 1.04f)
+                navPill.translationX = startX + (targetX - startX) * (animator.animatedValue as Float)
             }
             addListener(object : AnimatorListenerAdapter() {
                 override fun onAnimationEnd(animation: android.animation.Animator) {
                     navPill.translationX = targetX
-                    navPill.scaleX = 1f
-                    navPill.scaleY = 1f
                 }
             })
             start()
