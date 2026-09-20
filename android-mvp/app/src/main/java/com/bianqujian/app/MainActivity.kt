@@ -187,11 +187,8 @@ class MainActivity : Activity() {
         nav.addView(navPill, FrameLayout.LayoutParams(dp(84), dp(46)).apply { gravity = Gravity.CENTER_VERTICAL })
         val items = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
         fun item(label: String, selected: Boolean, onClick: () -> Unit) = TextView(this).apply {
-            text = label; textSize = 12f; gravity = Gravity.CENTER; includeFontPadding = true; setTypeface(null, 1); setTextColor(if (selected) Color.rgb(30,30,30) else Color.rgb(235,235,240)); setPadding(0, dp(4), 0, dp(4)); setOnClickListener { onClick() }
-            background = if (selected) null else GradientDrawable().apply { setColor(Color.argb(85, 30, 30, 35)); cornerRadius = 999f }
-            if (!selected && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                setRenderEffect(RenderEffect.createBlurEffect(6f, 6f, Shader.TileMode.CLAMP))
-            }
+            text = label; textSize = 12f; gravity = Gravity.CENTER; includeFontPadding = true; setTypeface(null, 1); setTextColor(if (selected) Color.rgb(30,30,30) else Color.rgb(245,245,248)); setPadding(0, dp(4), 0, dp(4)); setOnClickListener { onClick() }
+            background = if (selected) null else glassTabBg()
         }
         homeNavItem = item("⌂\n首页", true) { showPage(true) }
         mineNavItem = item("○\n我的", false) { showPage(false) }
@@ -213,15 +210,18 @@ class MainActivity : Activity() {
         minePage.visibility = if (home) View.GONE else View.VISIBLE
         handoffNote.visibility = if (home) View.VISIBLE else View.GONE
         handoff.visibility = if (home) View.VISIBLE else View.GONE
-        homeNavItem.setTextColor(if (home) Color.rgb(30,30,30) else Color.rgb(225,225,230))
-        mineNavItem.setTextColor(if (home) Color.rgb(225,225,230) else Color.rgb(30,30,30))
-        homeNavItem.background = if (home) null else GradientDrawable().apply { setColor(Color.argb(85, 30, 30, 35)); cornerRadius = 999f }
-        mineNavItem.background = if (home) GradientDrawable().apply { setColor(Color.argb(85, 30, 30, 35)); cornerRadius = 999f } else null
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            homeNavItem.setRenderEffect(if (home) null else RenderEffect.createBlurEffect(6f, 6f, Shader.TileMode.CLAMP))
-            mineNavItem.setRenderEffect(if (home) RenderEffect.createBlurEffect(6f, 6f, Shader.TileMode.CLAMP) else null)
-        }
+        homeNavItem.setTextColor(if (home) Color.rgb(30,30,30) else Color.rgb(245,245,248))
+        mineNavItem.setTextColor(if (home) Color.rgb(245,245,248) else Color.rgb(30,30,30))
+        homeNavItem.background = if (home) null else glassTabBg()
+        mineNavItem.background = if (home) glassTabBg() else null
         updatePillPosition(home)
+    }
+
+    // 未选中 Tab 的深色毛玻璃底：半透明深色 + 顶部亮边，文字不做模糊保持清晰
+    private fun glassTabBg(): GradientDrawable = GradientDrawable().apply {
+        setColor(Color.argb(130, 42, 42, 48))
+        cornerRadius = 999f
+        setStroke(dp(1), Color.argb(80, 255, 255, 255))
     }
 
     private fun updatePillPosition(home: Boolean) {
