@@ -133,7 +133,8 @@ test('安卓 MVP 工程包含入口、清单和本地持久化逻辑', () => {
     assert.match(code, /功能介绍/);
     assert.match(code, /改进想法/);
     assert.match(code, /版本更新/);
-    assert.match(code, /Color\.argb\(195, 255, 255, 255\)/);
+    assert.match(code, /Color\.argb\(175, 35, 35, 40\)/);
     assert.match(code, /cornerRadius = 999f/);
     assert.match(code, /LinearGradient\(0f, 0f, 0f, h/);
+    assert.match(code, /Color\.argb\(250, 255, 255, 255\)/);
 });

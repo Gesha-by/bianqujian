@@ -406,14 +406,14 @@ class MainActivity : Activity() {
         override fun onDraw(canvas: Canvas) {
             super.onDraw(canvas)
             val w = width.toFloat(); val h = height.toFloat(); val r = h / 2f
-            paint.shader = LinearGradient(0f, 0f, 0f, h, intArrayOf(Color.argb(235, 255, 255, 255), Color.argb(200, 245, 245, 250), Color.argb(175, 230, 230, 235)), floatArrayOf(0f, 0.5f, 1f), Shader.TileMode.CLAMP)
+            paint.shader = LinearGradient(0f, 0f, 0f, h, intArrayOf(Color.argb(250, 255, 255, 255), Color.argb(230, 245, 245, 250), Color.argb(210, 235, 235, 240)), floatArrayOf(0f, 0.5f, 1f), Shader.TileMode.CLAMP)
             canvas.drawRoundRect(0f, 0f, w, h, r, r, paint)
-            paint.shader = LinearGradient(0f, 0f, 0f, h * 0.5f, Color.argb(140, 255, 255, 255), Color.argb(0, 255, 255, 255), Shader.TileMode.CLAMP)
+            paint.shader = LinearGradient(0f, 0f, 0f, h * 0.5f, Color.argb(180, 255, 255, 255), Color.argb(0, 255, 255, 255), Shader.TileMode.CLAMP)
             canvas.drawRoundRect(1.5f, 1.5f, w - 1.5f, h * 0.5f, r, r, paint)
-            paint.shader = LinearGradient(0f, h * 0.75f, 0f, h - 1.5f, Color.argb(0, 255, 255, 255), Color.argb(90, 255, 255, 255), Shader.TileMode.CLAMP)
+            paint.shader = LinearGradient(0f, h * 0.75f, 0f, h - 1.5f, Color.argb(0, 255, 255, 255), Color.argb(120, 255, 255, 255), Shader.TileMode.CLAMP)
             canvas.drawRoundRect(1.5f, h * 0.75f, w - 1.5f, h - 1.5f, r, r, paint)
             paint.shader = null
-            paint.style = Paint.Style.STROKE; paint.strokeWidth = 1.2f; paint.color = Color.argb(70, 255, 255, 255)
+            paint.style = Paint.Style.STROKE; paint.strokeWidth = 1.2f; paint.color = Color.argb(90, 255, 255, 255)
             canvas.drawRoundRect(1.5f, 1.5f, w - 1.5f, h - 1.5f, r, r, paint); paint.style = Paint.Style.FILL
         }
     }
