@@ -139,6 +139,12 @@ test('安卓 MVP 工程包含入口、清单和本地持久化逻辑', () => {
     assert.match(code, /showAboutSection/);
     assert.match(code, /gravity = Gravity\.CENTER_HORIZONTAL/);
     assert.match(code, /ic_bqj_app/);
+    assert.match(code, /checkForUpdate/);
+    assert.match(code, /api\.github\.com\/repos\/Gesha-by\/bianqujian\/releases\/latest/);
+    assert.match(code, /browser_download_url/);
+    assert.match(code, /isNewerVersion/);
+    assert.match(code, /ACTION_VIEW/);
+    assert.match(fs.readFileSync('android-mvp/app/src/main/AndroidManifest.xml', 'utf8'), /android.permission.INTERNET/);
     // 选中态：白色滑动胶囊 + 投影；未选中项无深灰底，只用灰色文字
     assert.doesNotMatch(code, /glassTabBg/);
     assert.doesNotMatch(code, /Color\.argb\(130, 42, 42, 48\)/);

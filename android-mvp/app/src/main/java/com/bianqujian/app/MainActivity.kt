@@ -43,6 +43,8 @@ import android.graphics.Path
 import android.graphics.RenderEffect
 import android.graphics.Shader
 import android.graphics.Typeface
+import java.net.HttpURLConnection
+import java.net.URL
 import android.os.Build
 import android.animation.ValueAnimator
 import android.animation.ObjectAnimator
@@ -196,13 +198,48 @@ class MainActivity : Activity() {
         val options = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER_HORIZONTAL }
         options.addView(option("ⓘ", "功能介绍") { showAboutSection("功能介绍", "导入到件截图，识别取件码和取件点，整理待取包裹；取件后可通过第三步打开拼多多完成扫描。") }, LinearLayout.LayoutParams(-1, dp(88)).apply { bottomMargin = dp(12) })
         options.addView(option("✦", "改进想法") { showAboutSection("改进想法", "如果你有更好用的取件流程、识别体验或页面建议，可以告诉我们，后续会持续优化。") }, LinearLayout.LayoutParams(-1, dp(88)).apply { bottomMargin = dp(12) })
-        options.addView(option("↻", "版本更新") { showAboutSection("版本更新", "当前版本 0.1.0\n已支持：截图识别、通知自动同步、包裹状态管理和本地历史记录。") }, LinearLayout.LayoutParams(-1, dp(88)))
+        options.addView(option("↻", "版本更新") { checkForUpdate() }, LinearLayout.LayoutParams(-1, dp(88)))
         about.addView(options, LinearLayout.LayoutParams(-1, 0, 1f))
         AlertDialog.Builder(this).setTitle("关于便取件").setView(about).setNegativeButton("返回", null).show()
     }
 
     private fun showAboutSection(title: String, body: String) {
         AlertDialog.Builder(this).setTitle(title).setMessage(body).setPositiveButton("知道了", null).show()
+    }
+
+    private fun checkForUpdate() {
+        Toast.makeText(this, "正在检查更新…", Toast.LENGTH_SHORT).show()
+        Thread {
+            val result = runCatching {
+                val connection = (URL(LATEST_RELEASE_API).openConnection() as HttpURLConnection).apply {
+                    requestMethod = "GET"
+                    setRequestProperty("Accept", "application/vnd.github+json")
+                    connectTimeout = 8000
+                    readTimeout = 8000
+                }
+                val body = connection.inputStream.bufferedReader().use { it.readText() }
+                connection.disconnect()
+                val tag = Regex("\\\"tag_name\\\"\\s*:\\s*\\\"([^\\\"]+)\\\"").find(body)?.groupValues?.get(1).orEmpty()
+                val download = Regex("\\\"browser_download_url\\\"\\s*:\\s*\\\"([^\\\"]+\\.apk)\\\"").find(body)?.groupValues?.get(1).orEmpty()
+                tag to download
+            }
+            runOnUiThread {
+                result.onSuccess { (tag, download) ->
+                    when {
+                        tag.isBlank() -> Toast.makeText(this, "暂未发布版本", Toast.LENGTH_SHORT).show()
+                        isNewerVersion(tag, CURRENT_VERSION) -> AlertDialog.Builder(this).setTitle("发现新版本 $tag").setMessage("是否打开下载页面？").setNegativeButton("稍后", null).setPositiveButton("立即更新") { _, _ -> startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(download.ifBlank { RELEASES_PAGE }))) }.show()
+                        else -> Toast.makeText(this, "当前已是最新版本", Toast.LENGTH_SHORT).show()
+                    }
+                }.onFailure { Toast.makeText(this, "检查更新失败，请稍后重试", Toast.LENGTH_SHORT).show() }
+            }
+        }.start()
+    }
+
+    private fun isNewerVersion(remote: String, local: String): Boolean {
+        fun parts(value: String) = value.removePrefix("v").split(".").map { it.toIntOrNull() ?: 0 }
+        val r = parts(remote); val l = parts(local)
+        for (i in 0 until maxOf(r.size, l.size)) { val rv = r.getOrElse(i) { 0 }; val lv = l.getOrElse(i) { 0 }; if (rv != lv) return rv > lv }
+        return false
     }
 
     private fun buildBottomNavigation(): FrameLayout {
@@ -656,6 +693,9 @@ class MainActivity : Activity() {
     private fun load() { storage.getString("items", "")?.lines()?.filter { it.isNotBlank() }?.forEach { val p = it.split("|"); if (p.size >= 3) parcels.add(Parcel(p[0], p[1], p[2] == "true", if (p.size >= 4) runCatching { ParcelStatus.valueOf(p[3]) }.getOrDefault(if (p[2] == "true") ParcelStatus.PICKED_UP else ParcelStatus.READY) else if (p[2] == "true") ParcelStatus.PICKED_UP else ParcelStatus.READY, p.getOrElse(4) { "截图识别" }, p.getOrElse(5) { "未识别位置" }, p.getOrElse(6) { "未知类型" }, p.getOrElse(7) { "未知快递" }, p.getOrElse(8) { "未知运单号" }, p.getOrElse(9) { "未知时间" }, p.getOrElse(10) { "" })) }; pruneHistory() }
     companion object {
         private const val MAX_TERMINAL_HISTORY = 100
+        private const val CURRENT_VERSION = "0.1.0"
+        private const val LATEST_RELEASE_API = "https://api.github.com/repos/Gesha-by/bianqujian/releases/latest"
+        private const val RELEASES_PAGE = "https://github.com/Gesha-by/bianqujian/releases/latest"
         // 统一三档节奏：快速反馈 / 普通过渡 / 重点展示
         private const val DUR_PRESS = 120
         private const val DUR_FAST = 180
