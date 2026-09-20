@@ -34,9 +34,13 @@ import java.io.FileOutputStream
 import android.graphics.BitmapFactory
 import android.graphics.Bitmap
 import android.graphics.Canvas
+import android.graphics.LinearGradient
 import android.graphics.Paint
 import android.graphics.Path
+import android.graphics.RenderEffect
+import android.graphics.Shader
 import android.graphics.Typeface
+import android.os.Build
 import android.animation.ValueAnimator
 import android.animation.AnimatorListenerAdapter
 import android.view.animation.DecelerateInterpolator
@@ -145,14 +149,15 @@ class MainActivity : Activity() {
         val nav = FrameLayout(this).apply {
             layoutParams = LinearLayout.LayoutParams(-1, dp(60))
             setPadding(dp(4), dp(4), dp(4), dp(4))
-            background = rounded(Color.argb(245, 255, 255, 255), 24f)
-            elevation = dp(6).toFloat()
+            background = rounded(Color.argb(210, 255, 255, 255), 24f)
+            elevation = dp(8).toFloat()
         }
-        navPill = View(this).apply {
-            background = rounded(Color.argb(230, 235, 235, 240), 18f)
-            elevation = dp(2).toFloat()
+        navPill = GlassPillView(this).apply {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                setRenderEffect(RenderEffect.createBlurEffect(8f, 8f, Shader.TileMode.CLAMP))
+            }
         }
-        nav.addView(navPill, FrameLayout.LayoutParams(dp(80), dp(44)).apply { gravity = Gravity.CENTER_VERTICAL })
+        nav.addView(navPill, FrameLayout.LayoutParams(dp(84), dp(46)).apply { gravity = Gravity.CENTER_VERTICAL })
         val items = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
         fun item(label: String, selected: Boolean, onClick: () -> Unit) = TextView(this).apply {
             text = label; textSize = 12f; gravity = Gravity.CENTER; includeFontPadding = true; setTypeface(null, 1); setTextColor(if (selected) Color.rgb(0,0,0) else Color.rgb(104,119,146)); setPadding(0, dp(4), 0, dp(4)); setOnClickListener { onClick() }
@@ -385,6 +390,25 @@ class MainActivity : Activity() {
                 paint.color = Color.WHITE; canvas.drawCircle(w * .5f, h * .5f, w * .08f, paint)
             }
             paint.color = Color.rgb(66, 99, 235); paint.textSize = 10f; paint.typeface = Typeface.DEFAULT_BOLD; paint.textAlign = Paint.Align.CENTER; canvas.drawText(label, w / 2f, h * .92f, paint); paint.textAlign = Paint.Align.LEFT
+        }
+    }
+    private class GlassPillView(context: Context) : View(context) {
+        private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
+        private val shadowPaint = Paint(Paint.ANTI_ALIAS_FLAG)
+        override fun onDraw(canvas: Canvas) {
+            super.onDraw(canvas)
+            val w = width.toFloat(); val h = height.toFloat(); val r = h / 2f
+            shadowPaint.color = Color.argb(45, 0, 0, 0)
+            canvas.drawRoundRect(2f, 4f, w + 2f, h + 4f, r, r, shadowPaint)
+            paint.shader = LinearGradient(0f, 0f, 0f, h, intArrayOf(Color.argb(205, 255, 255, 255), Color.argb(165, 245, 245, 250), Color.argb(145, 230, 230, 235)), floatArrayOf(0f, 0.5f, 1f), Shader.TileMode.CLAMP)
+            canvas.drawRoundRect(0f, 0f, w, h, r, r, paint)
+            paint.shader = LinearGradient(0f, 0f, 0f, h * 0.55f, Color.argb(110, 255, 255, 255), Color.argb(0, 255, 255, 255), Shader.TileMode.CLAMP)
+            canvas.drawRoundRect(1.5f, 1.5f, w - 1.5f, h * 0.55f, r, r, paint)
+            paint.shader = LinearGradient(0f, h * 0.72f, 0f, h - 1.5f, Color.argb(0, 255, 255, 255), Color.argb(70, 255, 255, 255), Shader.TileMode.CLAMP)
+            canvas.drawRoundRect(1.5f, h * 0.72f, w - 1.5f, h - 1.5f, r, r, paint)
+            paint.shader = null
+            paint.style = Paint.Style.STROKE; paint.strokeWidth = 1.2f; paint.color = Color.argb(50, 255, 255, 255)
+            canvas.drawRoundRect(1.5f, 1.5f, w - 1.5f, h - 1.5f, r, r, paint); paint.style = Paint.Style.FILL
         }
     }
     private fun deleteImage(path: String) { if (path.isNotBlank()) runCatching { File(path).takeIf { it.isFile }?.delete() } }
