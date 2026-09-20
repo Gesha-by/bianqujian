@@ -136,12 +136,17 @@ class MainActivity : Activity() {
     private fun buildMinePage(): View {
         val content = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(0, dp(8), 0, dp(16)) }
         content.addView(TextView(this).apply { text = "我的"; textSize = 26f; setTypeface(null, 1); setTextColor(Color.rgb(28,28,30)); setPadding(dp(2), dp(8), dp(2), dp(18)) })
-        content.addView(TextView(this).apply { text = "便取件设置"; textSize = 13f; setTypeface(null, 1); setTextColor(Color.rgb(104,119,146)); setPadding(dp(2), 0, dp(2), dp(8)) })
+        content.addView(TextView(this).apply { text = "核心功能 · 建议保留"; textSize = 13f; setTypeface(null, 1); setTextColor(Color.rgb(66,99,235)); setPadding(dp(2), 0, dp(2), dp(8)) })
         val notification = TextView(this).apply { text = if (isNotificationAccessEnabled()) "通知自动同步　已开启" else "通知自动同步　未开启"; textSize = 15f; setTextColor(Color.rgb(23,35,61)); gravity = Gravity.CENTER_VERTICAL; setPadding(dp(16), dp(16), dp(16), dp(16)); background = rounded(Color.WHITE, 16f); setOnClickListener { startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)) } }
         content.addView(notification, LinearLayout.LayoutParams(-1, dp(58)).apply { bottomMargin = dp(10) })
         val point = storage.getString("frequent_pickup_point", "").orEmpty().ifBlank { "暂无记录" }
         content.addView(TextView(this).apply { text = "常用取件点\n$point"; textSize = 15f; setTextColor(Color.rgb(23,35,61)); setPadding(dp(16), dp(14), dp(16), dp(14)); background = rounded(Color.WHITE, 16f) }, LinearLayout.LayoutParams(-1, ViewGroup.LayoutParams.WRAP_CONTENT))
-        content.addView(TextView(this).apply { text = "更多设置将在后续版本逐步加入"; textSize = 12f; setTextColor(Color.rgb(142,142,147)); setPadding(dp(2), dp(24), dp(2), 0) })
+        content.addView(TextView(this).apply { text = "辅助功能 · 可后续再加"; textSize = 13f; setTypeface(null, 1); setTextColor(Color.rgb(104,119,146)); setPadding(dp(2), dp(24), dp(2), dp(8)) })
+        val history = TextView(this).apply { text = "历史包裹\n查看已取件和已取消记录"; textSize = 15f; setTextColor(Color.rgb(23,35,61)); setPadding(dp(16), dp(14), dp(16), dp(14)); background = rounded(Color.WHITE, 16f); setOnClickListener { val picked = parcels.count { it.status == ParcelStatus.PICKED_UP }; val cancelled = parcels.count { it.status == ParcelStatus.CANCELLED }; AlertDialog.Builder(this@MainActivity).setTitle("历史包裹").setMessage("已取件：$picked 件\n已取消：$cancelled 件").setPositiveButton("知道了", null).show() } }
+        content.addView(history, LinearLayout.LayoutParams(-1, ViewGroup.LayoutParams.WRAP_CONTENT).apply { bottomMargin = dp(10) })
+        val clear = TextView(this).apply { text = "清理记录\n删除本机保存的包裹数据"; textSize = 15f; setTextColor(Color.rgb(198,65,65)); setPadding(dp(16), dp(14), dp(16), dp(14)); background = rounded(Color.WHITE, 16f); setOnClickListener { AlertDialog.Builder(this@MainActivity).setTitle("清理记录").setMessage("确定删除本机保存的所有包裹记录吗？此操作不可撤销。").setNegativeButton("取消", null).setPositiveButton("删除") { _, _ -> parcels.clear(); save(); refresh(); Toast.makeText(this@MainActivity, "记录已清理", Toast.LENGTH_SHORT).show() }.show() } }
+        content.addView(clear, LinearLayout.LayoutParams(-1, ViewGroup.LayoutParams.WRAP_CONTENT).apply { bottomMargin = dp(10) })
+        content.addView(TextView(this).apply { text = "关于便取件\n版本 0.1.0 · 本地优先的校园取件清单"; textSize = 15f; setTextColor(Color.rgb(23,35,61)); setPadding(dp(16), dp(14), dp(16), dp(14)); background = rounded(Color.WHITE, 16f); setOnClickListener { AlertDialog.Builder(this@MainActivity).setTitle("关于便取件").setMessage("便取件帮助你在下楼前整理待取包裹。数据默认保存在本机，出库仍由拼多多完成。").setPositiveButton("知道了", null).show() } })
         return ScrollView(this).apply { isFillViewport = true; addView(content) }
     }
 
