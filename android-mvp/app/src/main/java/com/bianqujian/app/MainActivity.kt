@@ -38,6 +38,7 @@ import android.graphics.Paint
 import android.graphics.Path
 import android.graphics.Typeface
 import android.animation.ValueAnimator
+import android.animation.AnimatorListenerAdapter
 import android.view.animation.DecelerateInterpolator
 import android.view.animation.PathInterpolator
 
@@ -207,11 +208,13 @@ class MainActivity : Activity() {
                 navPill.scaleX = scale.coerceIn(0.92f, 1.08f)
                 navPill.scaleY = scale.coerceIn(0.92f, 1.08f)
             }
-            withEndAction {
-                navPill.translationX = targetX
-                navPill.scaleX = 1f
-                navPill.scaleY = 1f
-            }
+            addListener(object : AnimatorListenerAdapter() {
+                override fun onAnimationEnd(animation: android.animation.Animator) {
+                    navPill.translationX = targetX
+                    navPill.scaleX = 1f
+                    navPill.scaleY = 1f
+                }
+            })
             start()
         }
     }
