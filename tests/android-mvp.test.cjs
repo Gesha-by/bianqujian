@@ -145,4 +145,27 @@ test('安卓 MVP 工程包含入口、清单和本地持久化逻辑', () => {
     assert.match(code, /cornerRadius = 999f/);
     assert.match(code, /LinearGradient\(0f, 0f, 0f, h/);
     assert.match(code, /Color\.argb\(250, 255, 255, 255\)/);
+    // 统一动画体系：三档时长、标准曲线、减少动态效果
+    assert.match(code, /DUR_PRESS = 120/);
+    assert.match(code, /DUR_FAST = 180/);
+    assert.match(code, /DUR_NORMAL = 240/);
+    assert.match(code, /DUR_EMPHASIS = 400/);
+    assert.match(code, /ANIMATOR_DURATION_SCALE/);
+    assert.match(code, /standardInterpolator/);
+    // 开屏动画：Logo 弹性出现 + 扫描线 + 可跳过
+    assert.match(code, /showSplash/);
+    assert.match(code, /ScanLineView/);
+    assert.match(code, /正在同步取件信息/);
+    assert.match(code, /轻触跳过/);
+    assert.match(code, /SPLASH_MS = 1180L/);
+    // 点击反馈与状态动画
+    assert.match(code, /fun View\.tapFeedback/);
+    assert.match(code, /0\.97f\)\.scaleY\(0\.97f\)/);
+    assert.match(code, /fun View\.shakeError/);
+    assert.match(code, /buildEmptyState/);
+    assert.match(code, /已复制取件码 ✓/);
+    assert.match(code, /CLIPBOARD_SERVICE/);
+    // Tab 切换带方向感
+    assert.match(code, /showPage\(home: Boolean, instant: Boolean/);
+    assert.match(code, /PILL_DURATION = 280/);
 });

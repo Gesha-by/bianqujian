@@ -11,6 +11,7 @@ import com.google.mlkit.vision.text.TextRecognition
 import android.provider.OpenableColumns
 import android.provider.MediaStore
 import android.view.Gravity
+import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import android.widget.*
@@ -19,6 +20,8 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import androidx.core.app.NotificationCompat
 import android.content.BroadcastReceiver
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.content.Context
 import android.content.IntentFilter
 import android.provider.Settings
@@ -42,8 +45,10 @@ import android.graphics.Shader
 import android.graphics.Typeface
 import android.os.Build
 import android.animation.ValueAnimator
+import android.animation.ObjectAnimator
 import android.animation.AnimatorListenerAdapter
 import android.view.animation.DecelerateInterpolator
+import android.view.animation.OvershootInterpolator
 import android.view.animation.PathInterpolator
 
 enum class ParcelStatus { IN_TRANSIT, READY, PICKED_UP, CANCELLED }
@@ -66,6 +71,14 @@ class MainActivity : Activity() {
     private lateinit var navPill: View
     private var pillAnimator: ValueAnimator? = null
     private val iosSpringInterpolator by lazy { PathInterpolator(0.32f, 0.72f, 0.35f, 1f) }
+    // 统一动画曲线：标准减速（普通过渡）、轻微回弹（出现/按压恢复）
+    private val standardInterpolator by lazy { PathInterpolator(0.2f, 0f, 0f, 1f) }
+    private val appearInterpolator by lazy { OvershootInterpolator(0.85f) }
+    private var currentHome = true
+    private var splashPlayed = false
+    private lateinit var importCard: View
+    // 跟随系统“减少动态效果”：动画时长倍率为 0 时全部改为即时切换
+    private val reduceMotion: Boolean get() = Settings.Global.getFloat(contentResolver, Settings.Global.ANIMATOR_DURATION_SCALE, 1f) == 0f
     private val storage by lazy { getSharedPreferences("parcels", MODE_PRIVATE) }
     private val codePattern = Pattern.compile("(?<![A-Z0-9])[A-Z]{1,3}\\s*[-—–－]?\\s*\\d{1,4}(?:\\s*[-—–－]\\s*\\d{1,4}){1,2}(?![A-Z0-9])")
     private val updateReceiver = object : BroadcastReceiver() { override fun onReceive(context: Context?, intent: Intent?) { parcels.clear(); load(); refresh() } }
@@ -103,17 +116,18 @@ class MainActivity : Activity() {
         hero.addView(TextView(this).apply { text = "ⓘ  $pickupTip"; textSize = 10f; setTextColor(Color.rgb(66,99,235)); background = rounded(Color.rgb(242,242,247), 16f); setPadding(9, 6, 9, 6) })
         val import = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; setPadding(16, 14, 10, 14); background = rounded(Color.rgb(232,238,255), 22f) }
         import.addView(TextView(this).apply { text = "第一步  导入到件截图\n识别后确认，再加入找件清单"; textSize = 13f; setTypeface(null, 1); setTextColor(Color.rgb(28,48,92)); layoutParams = LinearLayout.LayoutParams(0, -2, 1f) })
-        import.addView(Button(this).apply { text = "开始识别"; textSize = 13f; setTypeface(null, 1); minHeight = dp(48); setTextColor(Color.WHITE); background = rounded(Color.rgb(66,99,235), 18f); elevation = 0f; stateListAnimator = null; setOnClickListener { chooseText() } })
-        val simulate = Button(this).apply { text = "模拟到件数据（测试）"; textSize = 10f; setTextColor(Color.rgb(104,119,146)); background = rounded(Color.rgb(242,245,250), 16f); elevation = 0f; stateListAnimator = null; setOnClickListener { simulateArrival() }; visibility = if ((applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0) View.VISIBLE else View.GONE }
-        val simulatePicked = Button(this).apply { text = "模拟拼多多已取件通知（测试）"; textSize = 10f; setTextColor(Color.rgb(104,119,146)); background = rounded(Color.rgb(242,245,250), 16f); elevation = 0f; stateListAnimator = null; setOnClickListener { simulatePickedUpNotification() }; visibility = if ((applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0) View.VISIBLE else View.GONE }
-        val autoSync = Button(this).apply { text = if (isNotificationAccessEnabled()) "通知自动同步已开启" else "开启通知自动同步"; textSize = 11f; setTextColor(Color.rgb(66,99,235)); background = rounded(Color.rgb(237,241,255), 16f); elevation = 0f; stateListAnimator = null; setOnClickListener { startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)) } }
+        import.addView(Button(this).apply { text = "开始识别"; textSize = 13f; setTypeface(null, 1); minHeight = dp(48); setTextColor(Color.WHITE); background = rounded(Color.rgb(66,99,235), 18f); elevation = 0f; stateListAnimator = null; setOnClickListener { chooseText() } }.also { it.tapFeedback() })
+        importCard = import
+        val simulate = Button(this).apply { text = "模拟到件数据（测试）"; textSize = 10f; setTextColor(Color.rgb(104,119,146)); background = rounded(Color.rgb(242,245,250), 16f); elevation = 0f; stateListAnimator = null; setOnClickListener { simulateArrival() }; visibility = if ((applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0) View.VISIBLE else View.GONE }.also { it.tapFeedback() }
+        val simulatePicked = Button(this).apply { text = "模拟拼多多已取件通知（测试）"; textSize = 10f; setTextColor(Color.rgb(104,119,146)); background = rounded(Color.rgb(242,245,250), 16f); elevation = 0f; stateListAnimator = null; setOnClickListener { simulatePickedUpNotification() }; visibility = if ((applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0) View.VISIBLE else View.GONE }.also { it.tapFeedback() }
+        val autoSync = Button(this).apply { text = if (isNotificationAccessEnabled()) "通知自动同步已开启" else "开启通知自动同步"; textSize = 11f; setTextColor(Color.rgb(66,99,235)); background = rounded(Color.rgb(237,241,255), 16f); elevation = 0f; stateListAnimator = null; setOnClickListener { startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)) } }.also { it.tapFeedback() }
         statusTabs = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; setPadding(0, 14, 0, 4) }
         list = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
         completedList = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
         addStatusTabs()
         summary = TextView(this).apply { textSize = 14f; setTextColor(Color.rgb(23,35,61)); setTypeface(null, 1); setPadding(12, 18, 2, 8) }
         handoffNote = TextView(this).apply { text = "取到包裹后，再进行最后一步"; textSize = 12f; setTextColor(Color.rgb(92,103,126)); setPadding(2, 16, 2, 6) }
-        handoff = Button(this).apply { text = "第三步  打开拼多多扫描取件"; textSize = 15f; setTypeface(null, 1); setTextColor(Color.WHITE); background = rounded(Color.rgb(23,35,61), 24f); elevation = 0f; stateListAnimator = null; setPadding(16, 16, 16, 16); setOnClickListener { choosePddOpenMode() } }
+        handoff = Button(this).apply { text = "第三步  打开拼多多扫描取件"; textSize = 15f; setTypeface(null, 1); setTextColor(Color.WHITE); background = rounded(Color.rgb(23,35,61), 24f); elevation = 0f; stateListAnimator = null; setPadding(16, 16, 16, 16); setOnClickListener { choosePddOpenMode() } }.also { it.tapFeedback() }
         val content = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(0, 0, 0, 12) }
         content.addView(title); content.addView(hero); content.addView(import, LinearLayout.LayoutParams(-1, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = 14 }); content.addView(autoSync, LinearLayout.LayoutParams(-1, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = 7 }); content.addView(simulate, LinearLayout.LayoutParams(-1, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = 7 }); content.addView(simulatePicked, LinearLayout.LayoutParams(-1, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = 7 }); content.addView(statusTabs); content.addView(summary); content.addView(list)
         homePage = ScrollView(this).apply { isFillViewport = true; addView(content) }
@@ -130,7 +144,10 @@ class MainActivity : Activity() {
             view.setPadding(dp(20), bars.top + dp(24), dp(20), bars.bottom + dp(8))
             insets
         }
-        setContentView(root); root.requestApplyInsets(); refresh()
+        val decor = FrameLayout(this).apply { addView(root, FrameLayout.LayoutParams(-1, -1)) }
+        setContentView(decor); root.requestApplyInsets(); refresh()
+        showPage(currentHome, instant = true)
+        if (!splashPlayed) { splashPlayed = true; if (!reduceMotion) showSplash(decor) }
     }
 
     private fun buildMinePage(): View {
@@ -139,14 +156,19 @@ class MainActivity : Activity() {
         content.addView(TextView(this).apply { text = "核心功能 · 建议保留"; textSize = 13f; setTypeface(null, 1); setTextColor(Color.rgb(66,99,235)); setPadding(dp(2), 0, dp(2), dp(8)) })
         val notification = TextView(this).apply { text = if (isNotificationAccessEnabled()) "通知自动同步　已开启" else "通知自动同步　未开启"; textSize = 15f; setTextColor(Color.rgb(23,35,61)); gravity = Gravity.CENTER_VERTICAL; setPadding(dp(16), dp(16), dp(16), dp(16)); background = rounded(Color.WHITE, 16f); setOnClickListener { startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)) } }
         content.addView(notification, LinearLayout.LayoutParams(-1, dp(58)).apply { bottomMargin = dp(10) })
+        notification.tapFeedback()
         val point = storage.getString("frequent_pickup_point", "").orEmpty().ifBlank { "暂无记录" }
         content.addView(TextView(this).apply { text = "常用取件点\n$point"; textSize = 15f; setTextColor(Color.rgb(23,35,61)); setPadding(dp(16), dp(14), dp(16), dp(14)); background = rounded(Color.WHITE, 16f) }, LinearLayout.LayoutParams(-1, ViewGroup.LayoutParams.WRAP_CONTENT))
         content.addView(TextView(this).apply { text = "辅助功能 · 可后续再加"; textSize = 13f; setTypeface(null, 1); setTextColor(Color.rgb(104,119,146)); setPadding(dp(2), dp(24), dp(2), dp(8)) })
         val history = TextView(this).apply { text = "历史包裹\n查看已取件和已取消记录"; textSize = 15f; setTextColor(Color.rgb(23,35,61)); setPadding(dp(16), dp(14), dp(16), dp(14)); background = rounded(Color.WHITE, 16f); setOnClickListener { val picked = parcels.count { it.status == ParcelStatus.PICKED_UP }; val cancelled = parcels.count { it.status == ParcelStatus.CANCELLED }; AlertDialog.Builder(this@MainActivity).setTitle("历史包裹").setMessage("已取件：$picked 件\n已取消：$cancelled 件").setPositiveButton("知道了", null).show() } }
         content.addView(history, LinearLayout.LayoutParams(-1, ViewGroup.LayoutParams.WRAP_CONTENT).apply { bottomMargin = dp(10) })
+        history.tapFeedback()
         val clear = TextView(this).apply { text = "清理记录\n删除本机保存的包裹数据"; textSize = 15f; setTextColor(Color.rgb(198,65,65)); setPadding(dp(16), dp(14), dp(16), dp(14)); background = rounded(Color.WHITE, 16f); setOnClickListener { AlertDialog.Builder(this@MainActivity).setTitle("清理记录").setMessage("确定删除本机保存的所有包裹记录吗？此操作不可撤销。").setNegativeButton("取消", null).setPositiveButton("删除") { _, _ -> parcels.clear(); save(); refresh(); Toast.makeText(this@MainActivity, "记录已清理", Toast.LENGTH_SHORT).show() }.show() } }
         content.addView(clear, LinearLayout.LayoutParams(-1, ViewGroup.LayoutParams.WRAP_CONTENT).apply { bottomMargin = dp(10) })
-        content.addView(TextView(this).apply { text = "关于便取件"; textSize = 15f; setTextColor(Color.rgb(23,35,61)); setPadding(dp(16), dp(14), dp(16), dp(14)); background = rounded(Color.WHITE, 16f); setOnClickListener { showAboutDialog() } })
+        clear.tapFeedback()
+        val about = TextView(this).apply { text = "关于便取件"; textSize = 15f; setTextColor(Color.rgb(23,35,61)); setPadding(dp(16), dp(14), dp(16), dp(14)); background = rounded(Color.WHITE, 16f); setOnClickListener { showAboutDialog() } }
+        content.addView(about)
+        about.tapFeedback()
         return ScrollView(this).apply { isFillViewport = true; addView(content) }
     }
 
@@ -195,26 +217,66 @@ class MainActivity : Activity() {
         items.addView(homeNavItem, LinearLayout.LayoutParams(0, dp(52), 1f).apply { marginEnd = dp(6) })
         items.addView(mineNavItem, LinearLayout.LayoutParams(0, dp(52), 1f).apply { marginStart = dp(6) })
         nav.addView(items, FrameLayout.LayoutParams(-1, -1))
-        nav.post { updatePillPosition(true) }
+        nav.post { updatePillPosition(currentHome, instant = true) }
         return nav
     }
 
-    private fun showPage(home: Boolean) {
+    private fun showPage(home: Boolean, instant: Boolean = false) {
+        if (!instant && home == currentHome) return
+        currentHome = home
         homePage.animate().cancel()
         minePage.animate().cancel()
-        homePage.translationX = 0f
-        minePage.translationX = 0f
-        homePage.alpha = 1f
-        minePage.alpha = 1f
-        homePage.visibility = if (home) View.VISIBLE else View.GONE
-        minePage.visibility = if (home) View.GONE else View.VISIBLE
-        handoffNote.visibility = if (home) View.VISIBLE else View.GONE
-        handoff.visibility = if (home) View.VISIBLE else View.GONE
+        handoffNote.animate().cancel()
+        handoff.animate().cancel()
+        updateTabsVisual(home)
+        // 即时模式（重建页面/减少动态效果）：不做任何动画
+        if (instant || reduceMotion) {
+            homePage.visibility = if (home) View.VISIBLE else View.GONE
+            minePage.visibility = if (home) View.GONE else View.VISIBLE
+            homePage.alpha = 1f; minePage.alpha = 1f
+            homePage.translationX = 0f; minePage.translationX = 0f
+            handoffNote.visibility = if (home) View.VISIBLE else View.GONE
+            handoff.visibility = if (home) View.VISIBLE else View.GONE
+            handoffNote.alpha = 1f; handoff.alpha = 1f
+            handoffNote.translationY = 0f; handoff.translationY = 0f
+            updatePillPosition(home, instant = true)
+            return
+        }
+        // 方向感：进入“我的”从右侧滑入，返回“首页”从左侧滑入
+        val outgoing = if (home) minePage else homePage
+        val incoming = if (home) homePage else minePage
+        val dir = if (home) -1 else 1
+        outgoing.animate().alpha(0f).translationX((-dir * dp(18)).toFloat())
+            .setDuration(DUR_FAST.toLong()).setInterpolator(standardInterpolator)
+            .withEndAction {
+                outgoing.visibility = View.GONE
+                outgoing.alpha = 1f; outgoing.translationX = 0f
+            }.start()
+        incoming.visibility = View.VISIBLE
+        incoming.alpha = 0f; incoming.translationX = (dir * dp(24)).toFloat()
+        incoming.animate().alpha(1f).translationX(0f)
+            .setDuration(DUR_NORMAL.toLong()).setInterpolator(standardInterpolator).start()
+        // 底部操作区跟随页面淡入淡出
+        if (home) {
+            listOf(handoffNote, handoff).forEach {
+                it.visibility = View.VISIBLE; it.alpha = 0f; it.translationY = dp(8).toFloat()
+                it.animate().alpha(1f).translationY(0f).setDuration(DUR_NORMAL.toLong()).setInterpolator(standardInterpolator).start()
+            }
+        } else {
+            listOf(handoffNote, handoff).forEach {
+                it.animate().alpha(0f).translationY(dp(6).toFloat())
+                    .setDuration(DUR_FAST.toLong()).setInterpolator(standardInterpolator)
+                    .withEndAction { it.visibility = View.GONE; it.alpha = 1f; it.translationY = 0f }.start()
+            }
+        }
+        updatePillPosition(home)
+    }
+
+    private fun updateTabsVisual(home: Boolean) {
         homeNavItem.setTextColor(if (home) Color.rgb(30,30,30) else Color.rgb(245,245,248))
         mineNavItem.setTextColor(if (home) Color.rgb(245,245,248) else Color.rgb(30,30,30))
         homeNavItem.background = if (home) null else glassTabBg()
         mineNavItem.background = if (home) glassTabBg() else null
-        updatePillPosition(home)
     }
 
     // 未选中 Tab 的深色毛玻璃底：半透明深色 + 顶部亮边，文字不做模糊保持清晰
@@ -224,24 +286,30 @@ class MainActivity : Activity() {
         setStroke(dp(1), Color.argb(80, 255, 255, 255))
     }
 
-    private fun updatePillPosition(home: Boolean) {
+    private fun updatePillPosition(home: Boolean, instant: Boolean = false) {
         val nav = navPill.parent as? FrameLayout ?: return
-        if (nav.width == 0) { nav.post { updatePillPosition(home) }; return }
+        if (nav.width == 0) { nav.post { updatePillPosition(home, instant) }; return }
         val navWidth = nav.width - nav.paddingLeft - nav.paddingRight
         val pillWidth = navPill.width.takeIf { it > 0 } ?: dp(80)
         val targetX = nav.paddingLeft + (if (home) navWidth * 0.25f else navWidth * 0.75f) - pillWidth / 2f
+        if (instant || reduceMotion) {
+            pillAnimator?.cancel()
+            navPill.translationX = targetX
+            navPill.scaleX = 1f; navPill.scaleY = 1f
+            return
+        }
         pillAnimator?.cancel()
         val startX = navPill.translationX
         val startScale = navPill.scaleX.coerceAtLeast(0.1f)
         pillAnimator = ValueAnimator.ofFloat(0f, 1f).apply {
-            duration = 400
+            duration = PILL_DURATION.toLong()
             interpolator = iosSpringInterpolator
             addUpdateListener { animator ->
                 val t = animator.animatedValue as Float
                 navPill.translationX = startX + (targetX - startX) * t
-                val scale = startScale + (1f - startScale) * t - 0.04f * kotlin.math.sin(t * Math.PI).toFloat()
-                navPill.scaleX = scale.coerceIn(0.92f, 1.08f)
-                navPill.scaleY = scale.coerceIn(0.92f, 1.08f)
+                val scale = startScale + (1f - startScale) * t - 0.025f * kotlin.math.sin(t * Math.PI).toFloat()
+                navPill.scaleX = scale.coerceIn(0.96f, 1.04f)
+                navPill.scaleY = scale.coerceIn(0.96f, 1.04f)
             }
             addListener(object : AnimatorListenerAdapter() {
                 override fun onAnimationEnd(animation: android.animation.Animator) {
@@ -261,12 +329,90 @@ class MainActivity : Activity() {
                 text = label; textSize = 12f; setTypeface(null, 1); minWidth = 0; minimumWidth = 0; minHeight = dp(46); setPadding(2, 7, 2, 7); elevation = 0f; stateListAnimator = null; background = rounded(if (status == ParcelStatus.READY) Color.rgb(66,99,235) else Color.rgb(242,244,249), 16f); setTextColor(if (status == ParcelStatus.READY) Color.WHITE else Color.rgb(64,81,112))
                 layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply { marginEnd = dp(4) }
                 setOnClickListener { selectedStatus = status; refresh() }
-            })
+            }.also { it.tapFeedback() })
         }
     }
 
     private fun rounded(color: Int, radius: Float) = GradientDrawable().apply { setColor(color); cornerRadius = radius }
     private fun dp(value: Int) = (value * resources.displayMetrics.density).toInt()
+
+    // 点击反馈：按下瞬间缩到 0.97，松开带轻微回弹；“减少动态效果”时保持静止
+    private fun View.tapFeedback() {
+        if (reduceMotion) return
+        setOnTouchListener { v, event ->
+            when (event.actionMasked) {
+                MotionEvent.ACTION_DOWN -> {
+                    v.animate().cancel()
+                    v.animate().scaleX(0.97f).scaleY(0.97f).setDuration(DUR_PRESS.toLong()).setInterpolator(standardInterpolator).start()
+                }
+                MotionEvent.ACTION_UP -> {
+                    val inside = event.x in 0f..v.width.toFloat() && event.y in 0f..v.height.toFloat()
+                    v.animate().scaleX(1f).scaleY(1f).setDuration(DUR_NORMAL.toLong()).setInterpolator(iosSpringInterpolator).start()
+                    if (inside) v.performClick()
+                }
+                MotionEvent.ACTION_CANCEL ->
+                    v.animate().scaleX(1f).scaleY(1f).setDuration(DUR_NORMAL.toLong()).setInterpolator(iosSpringInterpolator).start()
+            }
+            true
+        }
+    }
+
+    // 失败反馈：内容左右轻晃一下，配合错误 Toast
+    private fun View.shakeError() {
+        if (reduceMotion) return
+        ObjectAnimator.ofFloat(this, "translationX", 0f, (-dp(8)).toFloat(), dp(8).toFloat(), (-dp(4)).toFloat(), 0f).apply {
+            duration = 360; interpolator = standardInterpolator; start()
+        }
+    }
+
+    // 开屏：Logo 弹性出现 → 扫描线扫过 → 同步文案 → 淡出进入主页，全程轻触可跳过
+    private fun showSplash(decor: ViewGroup) {
+        val overlay = FrameLayout(this).apply { setBackgroundColor(Color.rgb(247,248,252)); isClickable = true; isFocusable = true }
+        val column = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER_HORIZONTAL }
+        val logo = ImageView(this).apply { setImageResource(R.drawable.ic_bqj_app); scaleType = ImageView.ScaleType.CENTER_INSIDE; alpha = 0f; scaleX = 0.72f; scaleY = 0.72f }
+        val scan = ScanLineView(this)
+        val message = TextView(this).apply { text = "正在同步取件信息"; textSize = 13f; setTextColor(Color.rgb(104,119,146)); alpha = 0f }
+        column.addView(logo, LinearLayout.LayoutParams(dp(96), dp(96)))
+        column.addView(scan, LinearLayout.LayoutParams(dp(168), dp(56)).apply { topMargin = dp(18) })
+        column.addView(message, LinearLayout.LayoutParams(-2, -2).apply { topMargin = dp(14) })
+        overlay.addView(column, FrameLayout.LayoutParams(-2, -2).apply { gravity = Gravity.CENTER })
+        val skip = TextView(this).apply { text = "轻触跳过"; textSize = 11f; setTextColor(Color.rgb(160,160,168)); alpha = 0.6f }
+        overlay.addView(skip, FrameLayout.LayoutParams(-2, -2).apply { gravity = Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL; bottomMargin = dp(40) })
+        decor.addView(overlay, FrameLayout.LayoutParams(-1, -1))
+
+        logo.animate().alpha(1f).scaleX(1f).scaleY(1f).setStartDelay(60).setDuration(DUR_EMPHASIS.toLong()).setInterpolator(appearInterpolator).start()
+        message.animate().alpha(1f).setStartDelay(260).setDuration(DUR_NORMAL.toLong()).setInterpolator(standardInterpolator).start()
+        val scanAnim = ObjectAnimator.ofFloat(scan, "fraction", 0f, 1f).apply {
+            startDelay = 300; duration = 720; interpolator = DecelerateInterpolator(1.2f); repeatCount = 1
+        }
+        scanAnim.start()
+        val dismiss = Runnable {
+            scanAnim.cancel()
+            overlay.animate().alpha(0f).setDuration(DUR_FAST.toLong()).setInterpolator(standardInterpolator)
+                .withEndAction { (overlay.parent as? ViewGroup)?.removeView(overlay) }.start()
+        }
+        overlay.postDelayed(dismiss, SPLASH_MS)
+        overlay.setOnClickListener { overlay.removeCallbacks(dismiss); overlay.post(dismiss) }
+    }
+
+    // 开屏扫描线：包裹轮廓上一条从左到右扫过的高亮线
+    private class ScanLineView(context: Context) : View(context) {
+        private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
+        var fraction = 0f
+            set(value) { field = value; invalidate() }
+        override fun onDraw(canvas: Canvas) {
+            super.onDraw(canvas)
+            val w = width.toFloat(); val h = height.toFloat()
+            paint.shader = null
+            paint.color = Color.rgb(232, 236, 246); canvas.drawRoundRect(0f, 0f, w, h, 14f, 14f, paint)
+            paint.color = Color.rgb(255, 218, 104); canvas.drawRect(0f, 0f, w, h * 0.22f, paint)
+            paint.color = Color.WHITE; canvas.drawCircle(w * 0.5f, h * 0.6f, w * 0.07f, paint)
+            val x = (fraction * w).coerceIn(0f, w)
+            paint.shader = LinearGradient(x - w * 0.3f, 0f, x, 0f, Color.argb(0, 66, 99, 235), Color.argb(220, 66, 99, 235), Shader.TileMode.CLAMP)
+            canvas.drawRect(x - w * 0.3f, 0f, x, h, paint)
+            paint.shader = null
+        }
+    }
     private fun choosePddOpenMode() {
         if (packageManager.getLaunchIntentForPackage("com.xunmeng.pinduoduo") == null) {
             openPdd()
@@ -332,7 +478,7 @@ class MainActivity : Activity() {
 
     private fun chooseText() { AlertDialog.Builder(this).setTitle("选择到件截图").setMessage("便取件只会读取你选择的截图，用于识别商品信息和取件码，不会读取其他照片。").setNegativeButton("取消", null).setPositiveButton("选择截图") { _, _ -> startActivityForResult(Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI).apply { type = "image/*" }, 9) }.show() }
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) { super.onActivityResult(requestCode, resultCode, data); if (requestCode == 9 && resultCode == RESULT_OK) data?.data?.let { importImage(it) } }
-    private fun importImage(uri: Uri) { val image = InputImage.fromFilePath(this, uri); val recognizer = TextRecognition.getClient(ChineseTextRecognizerOptions.Builder().build()); recognizer.process(image).addOnSuccessListener { result -> val rawText = result.text; val text = rawText.uppercase().replace('－', '-').replace('—', '-').replace('–', '-'); val normalizedText = text.replace(Regex("\\s+"), ""); val found = codePattern.matcher(normalizedText); val location = extractOcrLocation(rawText); val carrier = extractOcrCarrier(rawText); val tracking = extractOcrTracking(rawText); val updatedAt = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.CHINA).format(Date()); val imagePath = saveProductImage(uri, result); var added = 0; var updated = 0; while (found.find()) { val code = found.group().replace(Regex("\\s+"), "").replace(Regex("-+"), "-"); val index = parcels.indexOfFirst { it.code == code }; val oldName = if (index >= 0) parcels[index].name else ""; val oldImagePath = if (index >= 0) parcels[index].imagePath else ""; val recognizedName = extractOcrName(rawText); val name = if (recognizedName != "商品名待确认") recognizedName else if (oldName.isBlank() || oldName == "未提供商品名") "商品名待确认" else oldName; val item = Parcel(code, name, false, ParcelStatus.READY, "截图识别", location, "普通快递", carrier, tracking, updatedAt, imagePath); if (index < 0) { parcels.add(item); added++ } else { parcels[index] = item; if (oldImagePath.isNotBlank() && oldImagePath != imagePath) deleteImage(oldImagePath); updated++ } }; if (added + updated > 0 && location != "未识别位置") storage.edit().putString("frequent_pickup_point", location).apply(); save(); refresh(); val message = when { added == 0 && updated == 0 -> "未识别到取件码，请确认截图包含类似 B8-5-153 或 A-302-8 的编码"; updated > 0 -> "识别完成，已更新 $updated 个包裹，商品图和物流信息已保存"; else -> "识别完成，已导入 $added 个取件码，商品图和物流信息已保存" }; Toast.makeText(this, message, Toast.LENGTH_LONG).show() }.addOnFailureListener { Toast.makeText(this, "图片识别失败，请重试", Toast.LENGTH_LONG).show() } }
+    private fun importImage(uri: Uri) { val image = InputImage.fromFilePath(this, uri); val recognizer = TextRecognition.getClient(ChineseTextRecognizerOptions.Builder().build()); recognizer.process(image).addOnSuccessListener { result -> val rawText = result.text; val text = rawText.uppercase().replace('－', '-').replace('—', '-').replace('–', '-'); val normalizedText = text.replace(Regex("\\s+"), ""); val found = codePattern.matcher(normalizedText); val location = extractOcrLocation(rawText); val carrier = extractOcrCarrier(rawText); val tracking = extractOcrTracking(rawText); val updatedAt = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.CHINA).format(Date()); val imagePath = saveProductImage(uri, result); var added = 0; var updated = 0; while (found.find()) { val code = found.group().replace(Regex("\\s+"), "").replace(Regex("-+"), "-"); val index = parcels.indexOfFirst { it.code == code }; val oldName = if (index >= 0) parcels[index].name else ""; val oldImagePath = if (index >= 0) parcels[index].imagePath else ""; val recognizedName = extractOcrName(rawText); val name = if (recognizedName != "商品名待确认") recognizedName else if (oldName.isBlank() || oldName == "未提供商品名") "商品名待确认" else oldName; val item = Parcel(code, name, false, ParcelStatus.READY, "截图识别", location, "普通快递", carrier, tracking, updatedAt, imagePath); if (index < 0) { parcels.add(item); added++ } else { parcels[index] = item; if (oldImagePath.isNotBlank() && oldImagePath != imagePath) deleteImage(oldImagePath); updated++ } }; if (added + updated > 0 && location != "未识别位置") storage.edit().putString("frequent_pickup_point", location).apply(); save(); refresh(); val message = when { added == 0 && updated == 0 -> "未识别到取件码，请确认截图包含类似 B8-5-153 或 A-302-8 的编码"; updated > 0 -> "识别完成，已更新 $updated 个包裹，商品图和物流信息已保存"; else -> "识别完成，已导入 $added 个取件码，商品图和物流信息已保存" }; Toast.makeText(this, message, Toast.LENGTH_LONG).show() }.addOnFailureListener { if (this::importCard.isInitialized) importCard.shakeError(); Toast.makeText(this, "图片识别失败，请重试", Toast.LENGTH_LONG).show() } }
     private fun saveProductImage(uri: Uri, result: com.google.mlkit.vision.text.Text): String {
         val source = contentResolver.openInputStream(uri)?.use { BitmapFactory.decodeStream(it) }
         val file = File(filesDir, "product_${System.currentTimeMillis()}.jpg")
@@ -382,13 +528,33 @@ class MainActivity : Activity() {
         list.removeAllViews()
         val current = if (selectedStatus == null) parcels.filter { it.status != ParcelStatus.IN_TRANSIT } else parcels.filter { it.status == selectedStatus }
         summary.text = "第二步  ${statusLabel(selectedStatus)} · ${current.size} 件"
-        if (current.isEmpty()) list.addView(TextView(this).apply { text = "暂无${statusLabel(selectedStatus)}包裹"; textSize = 13f; setTextColor(Color.rgb(104,119,146)); gravity = Gravity.CENTER; setPadding(4, 24, 4, 24) })
-        current.forEach { addParcelRow(list, it) }
+        if (current.isEmpty()) list.addView(buildEmptyState(statusLabel(selectedStatus)))
+        current.forEachIndexed { index, parcel -> addParcelRow(list, parcel, index) }
         val filters = listOf<ParcelStatus?>(null, ParcelStatus.READY, ParcelStatus.PICKED_UP, ParcelStatus.CANCELLED)
         for (index in 0 until statusTabs.childCount) { val filter = filters[index]; val view = statusTabs.getChildAt(index) as Button; val count = if (filter == null) parcels.count { it.status != ParcelStatus.IN_TRANSIT } else parcels.count { it.status == filter }; view.text = "${statusLabel(filter)}（$count）"; view.background = rounded(if (filter == selectedStatus) Color.rgb(66,99,235) else Color.rgb(242,245,250), 16f); view.setTextColor(if (filter == selectedStatus) Color.WHITE else Color.rgb(64,81,112)) }
     }
     private fun statusLabel(status: ParcelStatus?) = when (status) { null -> "全部"; ParcelStatus.READY -> "待取件"; ParcelStatus.PICKED_UP -> "已取件"; ParcelStatus.CANCELLED -> "已取消"; ParcelStatus.IN_TRANSIT -> "运输中" }
-    private fun addParcelRow(container: LinearLayout, parcel: Parcel) {
+
+    // 空状态：包裹图标轻微上下浮动，比静态文案更明确
+    private fun buildEmptyState(label: String): View {
+        val box = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER_HORIZONTAL; setPadding(4, dp(36), 4, dp(36)) }
+        val icon = ProductIllustrationView(this, "暂无包裹")
+        box.addView(icon, LinearLayout.LayoutParams(dp(84), dp(104)))
+        box.addView(TextView(this).apply { text = "暂无${label}包裹"; textSize = 13f; setTextColor(Color.rgb(104,119,146)); gravity = Gravity.CENTER; setPadding(4, dp(12), 4, 0) })
+        if (!reduceMotion) {
+            val floatAnim = ObjectAnimator.ofFloat(icon, "translationY", 0f, (-dp(8)).toFloat()).apply {
+                duration = 1300; repeatCount = ObjectAnimator.INFINITE; repeatMode = ObjectAnimator.REVERSE; interpolator = standardInterpolator
+            }
+            icon.addOnAttachStateChangeListener(object : View.OnAttachStateChangeListener {
+                override fun onViewAttachedToWindow(v: View) {}
+                override fun onViewDetachedFromWindow(v: View) { floatAnim.cancel() }
+            })
+            floatAnim.start()
+        }
+        return box
+    }
+
+    private fun addParcelRow(container: LinearLayout, parcel: Parcel, index: Int = 0) {
         val checked = parcel.status == ParcelStatus.PICKED_UP
         val card = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; setPadding(12, 12, 12, 12); alpha = 1f; background = rounded(if (checked) Color.rgb(241,255,248) else Color.WHITE, 26f) }
         val product: View = if (parcel.name.contains("毽球")) ProductIllustrationView(this, "毽球") else if (parcel.imagePath.isNotBlank() && File(parcel.imagePath).exists()) ImageView(this).apply { setImageBitmap(BitmapFactory.decodeFile(parcel.imagePath)); scaleType = ImageView.ScaleType.CENTER_CROP; background = rounded(if (checked) Color.rgb(225,248,235) else Color.rgb(246,243,231), 18f) } else ProductIllustrationView(this, "商品待确认")
@@ -397,9 +563,22 @@ class MainActivity : Activity() {
         info.addView(TextView(this).apply { text = parcel.name; textSize = 15f; setTypeface(null, 1); setTextColor(Color.rgb(23,35,61)) })
         info.addView(TextView(this).apply { text = "${parcel.parcelType} · ${parcel.carrier}"; textSize = 11f; setTextColor(Color.rgb(104,119,146)); setPadding(0, 5, 0, 4) })
         info.addView(TextView(this).apply { text = "${parcel.source} · ${parcel.location} · ${parcel.updatedAt}"; textSize = 10f; setTextColor(Color.rgb(104,119,146)); setPadding(0, 0, 0, 6) })
-        info.addView(TextView(this).apply { text = parcel.code; textSize = 16f; setTypeface(null, 1); setTextColor(Color.rgb(49,76,126)) })
+        info.addView(TextView(this).apply { text = parcel.code; textSize = 16f; setTypeface(null, 1); setTextColor(Color.rgb(49,76,126)); isClickable = true }.also { codeView ->
+            codeView.tapFeedback()
+            codeView.setOnClickListener {
+                (getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager).setPrimaryClip(ClipData.newPlainText("取件码", parcel.code))
+                Toast.makeText(this, "已复制取件码 ✓", Toast.LENGTH_SHORT).show()
+            }
+        })
         card.addView(product); card.addView(info)
         container.addView(card, LinearLayout.LayoutParams(-1, ViewGroup.LayoutParams.WRAP_CONTENT).apply { bottomMargin = 12 })
+        // 数据到达后列表错峰淡入上移
+        if (!reduceMotion) {
+            card.alpha = 0f; card.translationY = dp(14).toFloat()
+            card.postDelayed({
+                card.animate().alpha(1f).translationY(0f).setDuration(DUR_NORMAL.toLong()).setInterpolator(standardInterpolator).start()
+            }, (index.coerceAtMost(6) * 45).toLong())
+        }
     }
     private class ProductIllustrationView(context: Context, private val label: String) : View(context) {
         private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
@@ -446,5 +625,14 @@ class MainActivity : Activity() {
     }
     private fun save() { pruneHistory(); storage.edit().putString("items", parcels.joinToString("\n") { "${it.code}|${it.name}|${it.found}|${it.status.name}|${it.source}|${it.location}|${it.parcelType}|${it.carrier}|${it.trackingNumber}|${it.updatedAt}|${it.imagePath}" }).apply() }
     private fun load() { storage.getString("items", "")?.lines()?.filter { it.isNotBlank() }?.forEach { val p = it.split("|"); if (p.size >= 3) parcels.add(Parcel(p[0], p[1], p[2] == "true", if (p.size >= 4) runCatching { ParcelStatus.valueOf(p[3]) }.getOrDefault(if (p[2] == "true") ParcelStatus.PICKED_UP else ParcelStatus.READY) else if (p[2] == "true") ParcelStatus.PICKED_UP else ParcelStatus.READY, p.getOrElse(4) { "截图识别" }, p.getOrElse(5) { "未识别位置" }, p.getOrElse(6) { "未知类型" }, p.getOrElse(7) { "未知快递" }, p.getOrElse(8) { "未知运单号" }, p.getOrElse(9) { "未知时间" }, p.getOrElse(10) { "" })) }; pruneHistory() }
-    companion object { private const val MAX_TERMINAL_HISTORY = 100 }
+    companion object {
+        private const val MAX_TERMINAL_HISTORY = 100
+        // 统一三档节奏：快速反馈 / 普通过渡 / 重点展示
+        private const val DUR_PRESS = 120
+        private const val DUR_FAST = 180
+        private const val DUR_NORMAL = 240
+        private const val DUR_EMPHASIS = 400
+        private const val PILL_DURATION = 280
+        private const val SPLASH_MS = 1180L
+    }
 }
