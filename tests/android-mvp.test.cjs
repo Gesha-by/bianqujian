@@ -113,4 +113,8 @@ test('安卓 MVP 工程包含入口、清单和本地持久化逻辑', () => {
   assert.match(code, /showPage\(false\)/);
   assert.match(code, /handoff\.visibility = if \(home\)/);
   assert.match(code, /bars\.bottom \+ dp\(8\)/);
+  assert.match(code, /homeNavItem\.setTextColor/);
+  assert.match(code, /mineNavItem\.setTextColor/);
+  assert.match(code, /includeFontPadding = true/);
+  assert.match(code, /dp\(60\)/);
 });

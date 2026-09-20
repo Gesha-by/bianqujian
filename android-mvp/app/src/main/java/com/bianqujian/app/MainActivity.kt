@@ -53,6 +53,8 @@ class MainActivity : Activity() {
     private lateinit var minePage: View
     private lateinit var handoffNote: View
     private lateinit var handoff: View
+    private lateinit var homeNavItem: TextView
+    private lateinit var mineNavItem: TextView
     private val storage by lazy { getSharedPreferences("parcels", MODE_PRIVATE) }
     private val codePattern = Pattern.compile("(?<![A-Z0-9])[A-Z]{1,3}\\s*[-—–－]?\\s*\\d{1,4}(?:\\s*[-—–－]\\s*\\d{1,4}){1,2}(?![A-Z0-9])")
     private val updateReceiver = object : BroadcastReceiver() { override fun onReceive(context: Context?, intent: Intent?) { parcels.clear(); load(); refresh() } }
@@ -134,10 +136,12 @@ class MainActivity : Activity() {
     private fun buildBottomNavigation(): LinearLayout {
         val nav = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER; setPadding(0, dp(4), 0, 0) }
         fun item(label: String, selected: Boolean, onClick: () -> Unit) = TextView(this).apply {
-            text = label; textSize = 12f; gravity = Gravity.CENTER; setTypeface(null, 1); setTextColor(if (selected) Color.rgb(66,99,235) else Color.rgb(104,119,146)); setPadding(0, dp(9), 0, dp(9)); setOnClickListener { onClick() }
+            text = label; textSize = 12f; gravity = Gravity.CENTER; includeFontPadding = true; setTypeface(null, 1); setTextColor(if (selected) Color.rgb(66,99,235) else Color.rgb(104,119,146)); setPadding(0, dp(4), 0, dp(4)); setOnClickListener { onClick() }
         }
-        nav.addView(item("⌂\n首页", true) { showPage(true) }, LinearLayout.LayoutParams(0, dp(52), 1f))
-        nav.addView(item("○\n我的", false) { showPage(false) }, LinearLayout.LayoutParams(0, dp(52), 1f))
+        homeNavItem = item("⌂\n首页", true) { showPage(true) }
+        mineNavItem = item("○\n我的", false) { showPage(false) }
+        nav.addView(homeNavItem, LinearLayout.LayoutParams(0, dp(60), 1f))
+        nav.addView(mineNavItem, LinearLayout.LayoutParams(0, dp(60), 1f))
         return nav
     }
 
@@ -146,6 +150,8 @@ class MainActivity : Activity() {
         minePage.visibility = if (home) View.GONE else View.VISIBLE
         handoffNote.visibility = if (home) View.VISIBLE else View.GONE
         handoff.visibility = if (home) View.VISIBLE else View.GONE
+        homeNavItem.setTextColor(if (home) Color.rgb(66,99,235) else Color.rgb(104,119,146))
+        mineNavItem.setTextColor(if (home) Color.rgb(104,119,146) else Color.rgb(66,99,235))
     }
 
     private fun addStatusTabs() {
