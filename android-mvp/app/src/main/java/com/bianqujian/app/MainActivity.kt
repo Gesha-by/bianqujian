@@ -68,11 +68,16 @@ class MainActivity : Activity() {
             insets
         }
         root.requestApplyInsets()
-        val title = TextView(this).apply { text = "便取件"; textSize = 22f; setTextColor(Color.rgb(23,35,61)); setTypeface(null, 1); setPadding(2, 8, 2, 16) }
-        val hero = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(18, 17, 18, 17); background = rounded(Color.rgb(31,45,70), 28f) }
-        hero.addView(TextView(this).apply { text = "下楼前，先看清楚要找什么"; textSize = 12f; setTextColor(Color.WHITE) })
-        hero.addView(TextView(this).apply { text = "我的取件点 · ${parcels.firstOrNull { it.location != "未识别位置" }?.location ?: "待识别"}"; textSize = 20f; setTextColor(Color.WHITE); setTypeface(null, 1); setPadding(0, 7, 0, 11) })
-        hero.addView(TextView(this).apply { text = "● $locationSummary"; textSize = 11f; setTextColor(Color.WHITE); background = rounded(Color.argb(45,255,255,255), 16f); setPadding(10, 7, 10, 7) })
+        val title = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; setPadding(2, 5, 2, 15) }
+        title.addView(ImageView(this).apply { setImageResource(com.bianqujian.app.R.drawable.ic_bqj_app); scaleType = ImageView.ScaleType.CENTER_INSIDE }, LinearLayout.LayoutParams(dp(34), dp(34)).apply { rightMargin = dp(10) })
+        title.addView(LinearLayout(this).apply { orientation = LinearLayout.VERTICAL
+            addView(TextView(this@MainActivity).apply { text = "便取件"; textSize = 20f; setTextColor(Color.rgb(28,28,30)); setTypeface(null, 1) })
+            addView(TextView(this@MainActivity).apply { text = "下楼前，先看清楚要找什么"; textSize = 10f; setTextColor(Color.rgb(142,142,147)); setPadding(0, 2, 0, 0) })
+        })
+        val hero = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(14, 14, 14, 14); background = rounded(Color.WHITE, 16f); elevation = dp(1).toFloat() }
+        hero.addView(TextView(this).apply { text = "我的取件点"; textSize = 11f; setTextColor(Color.rgb(66,99,235)); setTypeface(null, 1) })
+        hero.addView(TextView(this).apply { text = parcels.firstOrNull { it.location != "未识别位置" }?.location ?: "北区妈妈驿站文具店后面"; textSize = 15f; setTextColor(Color.rgb(28,28,30)); setTypeface(null, 1); setPadding(0, 5, 0, 8) })
+        hero.addView(TextView(this).apply { text = "ⓘ  $locationSummary"; textSize = 10f; setTextColor(Color.rgb(66,99,235)); background = rounded(Color.rgb(242,242,247), 16f); setPadding(9, 6, 9, 6) })
         val import = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; setPadding(14, 11, 8, 11); background = rounded(Color.WHITE, 22f) }
         import.addView(TextView(this).apply { text = "导入订单长截图\n识别后确认，再加入找件清单"; textSize = 12f; setTextColor(Color.rgb(42,55,82)); layoutParams = LinearLayout.LayoutParams(0, -2, 1f) })
         import.addView(Button(this).apply { text = "识别图片"; textSize = 11f; setTextColor(Color.rgb(66,99,235)); background = rounded(Color.rgb(237,241,255), 16f); elevation = 0f; stateListAnimator = null; setOnClickListener { chooseText() } })

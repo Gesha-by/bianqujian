@@ -91,4 +91,8 @@ test('安卓 MVP 工程包含入口、清单和本地持久化逻辑', () => {
   assert.match(deploy, /monkey -p com\.bianqujian\.app/);
   assert.match(code, /location: String/);
   assert.match(code, /未识别位置/);
+  assert.match(code, /R\.drawable\.ic_bqj_app/);
+  assert.match(code, /我的取件点/);
+  assert.match(code, /北区妈妈驿站文具店后面/);
+  assert.match(code, /Color\.WHITE, 16f/);
 });
