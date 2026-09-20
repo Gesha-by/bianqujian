@@ -22,7 +22,7 @@ class ParcelNotificationListener : NotificationListenerService() {
             isCompleted -> "PICKED_UP"
             Regex("退回|退货|取消").containsMatchIn(text) -> "CANCELLED"
             Regex("已到站|已入库|待取|取件码").containsMatchIn(text) -> "READY"
-            else -> "IN_TRANSIT"
+            else -> return
         }
         val parcelType = extractType(text)
         val carrier = extractCarrier(text)
@@ -36,6 +36,7 @@ class ParcelNotificationListener : NotificationListenerService() {
             val code = matcher.group().replace(Regex("\\s+"), "").replace(Regex("-+"), "-")
             val index = rows.indexOfFirst { it.startsWith("$code|") }
             val location = extractLocation(text)
+            if (location != "未识别位置") prefs.edit().putString("frequent_pickup_point", location).apply()
             if (index < 0) {
                 rows.add("$code|${extractName(text)}|${isCompleted}|$status|拼多多|${location}|$parcelType|$carrier|$trackingNumber|$updatedAt")
                 changed = true

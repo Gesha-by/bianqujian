@@ -46,7 +46,7 @@ class MainActivity : Activity() {
     private lateinit var list: LinearLayout
     private lateinit var completedList: LinearLayout
     private lateinit var statusTabs: LinearLayout
-    private var selectedStatus = ParcelStatus.READY
+    private var selectedStatus: ParcelStatus? = null
     private var locationSummary = "取件点以截图识别结果为准"
     private lateinit var summary: TextView
     private val storage by lazy { getSharedPreferences("parcels", MODE_PRIVATE) }
@@ -74,10 +74,15 @@ class MainActivity : Activity() {
             addView(TextView(this@MainActivity).apply { text = "便取件"; textSize = 20f; setTextColor(Color.rgb(28,28,30)); setTypeface(null, 1) })
             addView(TextView(this@MainActivity).apply { text = "下楼前，先看清楚要找什么"; textSize = 10f; setTextColor(Color.rgb(142,142,147)); setPadding(0, 2, 0, 0) })
         })
+        val activePickupPoint = parcels.firstOrNull { it.status == ParcelStatus.READY && it.location != "未识别位置" }?.location
+        val frequentPickupPoint = storage.getString("frequent_pickup_point", "").orEmpty()
+        val pickupTitle = if (activePickupPoint == null && frequentPickupPoint.isNotBlank()) "常用取件点" else "我的取件点"
+        val pickupPoint = activePickupPoint ?: frequentPickupPoint.ifBlank { "暂无待取件" }
+        val pickupTip = when { activePickupPoint != null -> "当前待取件的截图识别结果"; frequentPickupPoint.isNotBlank() -> "基于本机历史取件记录自动学习"; else -> "导入取件截图后自动识别" }
         val hero = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(14, 14, 14, 14); background = rounded(Color.WHITE, 16f); elevation = dp(1).toFloat() }
-        hero.addView(TextView(this).apply { text = "我的取件点"; textSize = 11f; setTextColor(Color.rgb(66,99,235)); setTypeface(null, 1) })
-        hero.addView(TextView(this).apply { text = parcels.firstOrNull { it.location != "未识别位置" }?.location ?: "北区妈妈驿站文具店后面"; textSize = 15f; setTextColor(Color.rgb(28,28,30)); setTypeface(null, 1); setPadding(0, 5, 0, 8) })
-        hero.addView(TextView(this).apply { text = "ⓘ  $locationSummary"; textSize = 10f; setTextColor(Color.rgb(66,99,235)); background = rounded(Color.rgb(242,242,247), 16f); setPadding(9, 6, 9, 6) })
+        hero.addView(TextView(this).apply { text = pickupTitle; textSize = 11f; setTextColor(Color.rgb(66,99,235)); setTypeface(null, 1) })
+        hero.addView(TextView(this).apply { text = pickupPoint; textSize = 15f; setTextColor(Color.rgb(28,28,30)); setTypeface(null, 1); setPadding(0, 5, 0, 8) })
+        hero.addView(TextView(this).apply { text = "ⓘ  $pickupTip"; textSize = 10f; setTextColor(Color.rgb(66,99,235)); background = rounded(Color.rgb(242,242,247), 16f); setPadding(9, 6, 9, 6) })
         val import = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; setPadding(14, 11, 8, 11); background = rounded(Color.WHITE, 22f) }
         import.addView(TextView(this).apply { text = "导入订单长截图\n识别后确认，再加入找件清单"; textSize = 12f; setTextColor(Color.rgb(42,55,82)); layoutParams = LinearLayout.LayoutParams(0, -2, 1f) })
         import.addView(Button(this).apply { text = "识别图片"; textSize = 11f; setTextColor(Color.rgb(66,99,235)); background = rounded(Color.rgb(237,241,255), 16f); elevation = 0f; stateListAnimator = null; setOnClickListener { chooseText() } })
@@ -97,12 +102,7 @@ class MainActivity : Activity() {
     }
 
     private fun addStatusTabs() {
-        val tabs = listOf(
-            ParcelStatus.IN_TRANSIT to "运输中",
-            ParcelStatus.READY to "待取件",
-            ParcelStatus.PICKED_UP to "已取件",
-            ParcelStatus.CANCELLED to "已取消"
-        )
+        val tabs = listOf(null to "全部", ParcelStatus.READY to "待取件", ParcelStatus.PICKED_UP to "已取件", ParcelStatus.CANCELLED to "已取消")
         tabs.forEach { (status, label) ->
             statusTabs.addView(Button(this).apply {
                 text = label; textSize = 11f; minWidth = 0; minimumWidth = 0; setPadding(2, 7, 2, 7)
@@ -179,7 +179,7 @@ class MainActivity : Activity() {
 
     private fun chooseText() { AlertDialog.Builder(this).setTitle("选择到件截图").setMessage("便取件只会读取你选择的截图，用于识别商品信息和取件码，不会读取其他照片。").setNegativeButton("取消", null).setPositiveButton("选择截图") { _, _ -> startActivityForResult(Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI).apply { type = "image/*" }, 9) }.show() }
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) { super.onActivityResult(requestCode, resultCode, data); if (requestCode == 9 && resultCode == RESULT_OK) data?.data?.let { importImage(it) } }
-    private fun importImage(uri: Uri) { val image = InputImage.fromFilePath(this, uri); val recognizer = TextRecognition.getClient(ChineseTextRecognizerOptions.Builder().build()); recognizer.process(image).addOnSuccessListener { result -> val rawText = result.text; val text = rawText.uppercase().replace('－', '-').replace('—', '-').replace('–', '-'); val normalizedText = text.replace(Regex("\\s+"), ""); val found = codePattern.matcher(normalizedText); val location = extractOcrLocation(rawText); val carrier = extractOcrCarrier(rawText); val tracking = extractOcrTracking(rawText); val updatedAt = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.CHINA).format(Date()); val imagePath = saveProductImage(uri, result); var added = 0; var updated = 0; while (found.find()) { val code = found.group().replace(Regex("\\s+"), "").replace(Regex("-+"), "-"); val index = parcels.indexOfFirst { it.code == code }; val oldName = if (index >= 0) parcels[index].name else ""; val recognizedName = extractOcrName(rawText); val name = if (recognizedName != "商品名待确认") recognizedName else if (oldName.isBlank() || oldName == "未提供商品名") "商品名待确认" else oldName; val item = Parcel(code, name, false, ParcelStatus.READY, "截图识别", location, "普通快递", carrier, tracking, updatedAt, imagePath); if (index < 0) { parcels.add(item); added++ } else { parcels[index] = item; updated++ } }; save(); refresh(); val message = when { added == 0 && updated == 0 -> "未识别到取件码，请确认截图包含类似 B8-5-153 或 A-302-8 的编码"; updated > 0 -> "识别完成，已更新 $updated 个包裹，商品图和物流信息已保存"; else -> "识别完成，已导入 $added 个取件码，商品图和物流信息已保存" }; Toast.makeText(this, message, Toast.LENGTH_LONG).show() }.addOnFailureListener { Toast.makeText(this, "图片识别失败，请重试", Toast.LENGTH_LONG).show() } }
+    private fun importImage(uri: Uri) { val image = InputImage.fromFilePath(this, uri); val recognizer = TextRecognition.getClient(ChineseTextRecognizerOptions.Builder().build()); recognizer.process(image).addOnSuccessListener { result -> val rawText = result.text; val text = rawText.uppercase().replace('－', '-').replace('—', '-').replace('–', '-'); val normalizedText = text.replace(Regex("\\s+"), ""); val found = codePattern.matcher(normalizedText); val location = extractOcrLocation(rawText); val carrier = extractOcrCarrier(rawText); val tracking = extractOcrTracking(rawText); val updatedAt = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.CHINA).format(Date()); val imagePath = saveProductImage(uri, result); var added = 0; var updated = 0; while (found.find()) { val code = found.group().replace(Regex("\\s+"), "").replace(Regex("-+"), "-"); val index = parcels.indexOfFirst { it.code == code }; val oldName = if (index >= 0) parcels[index].name else ""; val recognizedName = extractOcrName(rawText); val name = if (recognizedName != "商品名待确认") recognizedName else if (oldName.isBlank() || oldName == "未提供商品名") "商品名待确认" else oldName; val item = Parcel(code, name, false, ParcelStatus.READY, "截图识别", location, "普通快递", carrier, tracking, updatedAt, imagePath); if (index < 0) { parcels.add(item); added++ } else { parcels[index] = item; updated++ } }; if (added + updated > 0 && location != "未识别位置") storage.edit().putString("frequent_pickup_point", location).apply(); save(); refresh(); val message = when { added == 0 && updated == 0 -> "未识别到取件码，请确认截图包含类似 B8-5-153 或 A-302-8 的编码"; updated > 0 -> "识别完成，已更新 $updated 个包裹，商品图和物流信息已保存"; else -> "识别完成，已导入 $added 个取件码，商品图和物流信息已保存" }; Toast.makeText(this, message, Toast.LENGTH_LONG).show() }.addOnFailureListener { Toast.makeText(this, "图片识别失败，请重试", Toast.LENGTH_LONG).show() } }
     private fun saveProductImage(uri: Uri, result: com.google.mlkit.vision.text.Text): String {
         val source = contentResolver.openInputStream(uri)?.use { BitmapFactory.decodeStream(it) }
         val file = File(filesDir, "product_${System.currentTimeMillis()}.jpg")
@@ -227,13 +227,14 @@ class MainActivity : Activity() {
     }
     private fun refresh() {
         list.removeAllViews()
-        val current = parcels.filter { it.status == selectedStatus }
+        val current = if (selectedStatus == null) parcels.filter { it.status != ParcelStatus.IN_TRANSIT } else parcels.filter { it.status == selectedStatus }
         summary.text = "${statusLabel(selectedStatus)} · ${current.size} 件"
         if (current.isEmpty()) list.addView(TextView(this).apply { text = "暂无${statusLabel(selectedStatus)}包裹"; textSize = 13f; setTextColor(Color.rgb(104,119,146)); gravity = Gravity.CENTER; setPadding(4, 24, 4, 24) })
         current.forEach { addParcelRow(list, it) }
-        for (index in 0 until statusTabs.childCount) { val view = statusTabs.getChildAt(index); view.background = rounded(if (ParcelStatus.values()[index] == selectedStatus) Color.rgb(66,99,235) else Color.rgb(242,245,250), 10f); (view as Button).setTextColor(if (ParcelStatus.values()[index] == selectedStatus) Color.WHITE else Color.rgb(64,81,112)) }
+        val filters = listOf<ParcelStatus?>(null, ParcelStatus.READY, ParcelStatus.PICKED_UP, ParcelStatus.CANCELLED)
+        for (index in 0 until statusTabs.childCount) { val filter = filters[index]; val view = statusTabs.getChildAt(index) as Button; val count = if (filter == null) parcels.count { it.status != ParcelStatus.IN_TRANSIT } else parcels.count { it.status == filter }; view.text = "${statusLabel(filter)}（$count）"; view.background = rounded(if (filter == selectedStatus) Color.rgb(66,99,235) else Color.rgb(242,245,250), 10f); view.setTextColor(if (filter == selectedStatus) Color.WHITE else Color.rgb(64,81,112)) }
     }
-    private fun statusLabel(status: ParcelStatus) = mapOf(ParcelStatus.IN_TRANSIT to "运输中", ParcelStatus.READY to "待取件", ParcelStatus.PICKED_UP to "已取件", ParcelStatus.CANCELLED to "已取消")[status]!!
+    private fun statusLabel(status: ParcelStatus?) = when (status) { null -> "全部"; ParcelStatus.READY -> "待取件"; ParcelStatus.PICKED_UP -> "已取件"; ParcelStatus.CANCELLED -> "已取消"; ParcelStatus.IN_TRANSIT -> "运输中" }
     private fun addParcelRow(container: LinearLayout, parcel: Parcel) {
         val checked = parcel.status == ParcelStatus.PICKED_UP
         val card = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; setPadding(12, 12, 12, 12); alpha = 1f; background = rounded(if (checked) Color.rgb(241,255,248) else Color.WHITE, 26f) }
