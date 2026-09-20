@@ -179,7 +179,7 @@ class MainActivity : Activity() {
 
     private fun chooseText() { AlertDialog.Builder(this).setTitle("选择到件截图").setMessage("便取件只会读取你选择的截图，用于识别商品信息和取件码，不会读取其他照片。").setNegativeButton("取消", null).setPositiveButton("选择截图") { _, _ -> startActivityForResult(Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI).apply { type = "image/*" }, 9) }.show() }
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) { super.onActivityResult(requestCode, resultCode, data); if (requestCode == 9 && resultCode == RESULT_OK) data?.data?.let { importImage(it) } }
-    private fun importImage(uri: Uri) { val image = InputImage.fromFilePath(this, uri); val recognizer = TextRecognition.getClient(ChineseTextRecognizerOptions.Builder().build()); recognizer.process(image).addOnSuccessListener { result -> val rawText = result.text; val text = rawText.uppercase().replace('－', '-').replace('—', '-').replace('–', '-'); val normalizedText = text.replace(Regex("\\s+"), ""); val found = codePattern.matcher(normalizedText); val location = extractOcrLocation(rawText); val carrier = extractOcrCarrier(rawText); val tracking = extractOcrTracking(rawText); val updatedAt = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.CHINA).format(Date()); val imagePath = saveProductImage(uri, result); var added = 0; var updated = 0; while (found.find()) { val code = found.group().replace(Regex("\\s+"), "").replace(Regex("-+"), "-"); val index = parcels.indexOfFirst { it.code == code }; val oldName = if (index >= 0) parcels[index].name else ""; val recognizedName = extractOcrName(rawText); val name = if (index >= 0 && oldName.isNotBlank() && oldName != "未提供商品名" && oldName != "商品名待确认") oldName else recognizedName; val item = Parcel(code, name, false, ParcelStatus.READY, "截图识别", location, "普通快递", carrier, tracking, updatedAt, imagePath); if (index < 0) { parcels.add(item); added++ } else { parcels[index] = item; updated++ } }; save(); refresh(); val message = when { added == 0 && updated == 0 -> "未识别到取件码，请确认截图包含类似 B8-5-153 或 A-302-8 的编码"; updated > 0 -> "识别完成，已更新 $updated 个包裹，商品图和物流信息已保存"; else -> "识别完成，已导入 $added 个取件码，商品图和物流信息已保存" }; Toast.makeText(this, message, Toast.LENGTH_LONG).show() }.addOnFailureListener { Toast.makeText(this, "图片识别失败，请重试", Toast.LENGTH_LONG).show() } }
+    private fun importImage(uri: Uri) { val image = InputImage.fromFilePath(this, uri); val recognizer = TextRecognition.getClient(ChineseTextRecognizerOptions.Builder().build()); recognizer.process(image).addOnSuccessListener { result -> val rawText = result.text; val text = rawText.uppercase().replace('－', '-').replace('—', '-').replace('–', '-'); val normalizedText = text.replace(Regex("\\s+"), ""); val found = codePattern.matcher(normalizedText); val location = extractOcrLocation(rawText); val carrier = extractOcrCarrier(rawText); val tracking = extractOcrTracking(rawText); val updatedAt = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.CHINA).format(Date()); val imagePath = saveProductImage(uri, result); var added = 0; var updated = 0; while (found.find()) { val code = found.group().replace(Regex("\\s+"), "").replace(Regex("-+"), "-"); val index = parcels.indexOfFirst { it.code == code }; val oldName = if (index >= 0) parcels[index].name else ""; val recognizedName = extractOcrName(rawText); val name = if (recognizedName != "商品名待确认") recognizedName else if (oldName.isBlank() || oldName == "未提供商品名") "商品名待确认" else oldName; val item = Parcel(code, name, false, ParcelStatus.READY, "截图识别", location, "普通快递", carrier, tracking, updatedAt, imagePath); if (index < 0) { parcels.add(item); added++ } else { parcels[index] = item; updated++ } }; save(); refresh(); val message = when { added == 0 && updated == 0 -> "未识别到取件码，请确认截图包含类似 B8-5-153 或 A-302-8 的编码"; updated > 0 -> "识别完成，已更新 $updated 个包裹，商品图和物流信息已保存"; else -> "识别完成，已导入 $added 个取件码，商品图和物流信息已保存" }; Toast.makeText(this, message, Toast.LENGTH_LONG).show() }.addOnFailureListener { Toast.makeText(this, "图片识别失败，请重试", Toast.LENGTH_LONG).show() } }
     private fun saveProductImage(uri: Uri, result: com.google.mlkit.vision.text.Text): String {
         val source = contentResolver.openInputStream(uri)?.use { BitmapFactory.decodeStream(it) }
         val file = File(filesDir, "product_${System.currentTimeMillis()}.jpg")
@@ -208,12 +208,22 @@ class MainActivity : Activity() {
     private fun extractOcrTracking(text: String): String = Regex("(?<![A-Z0-9])(?:SF|YT|ZT|JD|JT)?[A-Z0-9]{8,20}(?![A-Z0-9])").find(text.uppercase())?.value ?: "未知运单号"
     private fun extractOcrName(text: String): String {
         val blocked = Regex("收货地址|快递员|取件码|订单编号|待取件|已取件|已签收|您的快件|快件己|快件已|到达|代收点|复制|分享取件|拨打电话|导航|支持退换货|号\\s*码保护|品牌|包装|后天达|可伶可俐|全店|销量|正品|^\\d{1,2}:\\d{2}|^\\d{1,3}%?$|^5G$|^Wi-?Fi$|^¥?[\\d.]+$")
+        val productHints = Regex("毽球|羽毛球|乒乓球|洗衣液|洗发水|沐浴露|牙膏|纸巾|吸油纸|面膜|零食|水杯|衣服|鞋|袜|耳机|充电|玩具|文具|清洁|日用品|护肤|化妆|食品|手机|油控|控油|oil|clean|film", RegexOption.IGNORE_CASE)
         val lines = text.lineSequence().map { it.trim() }.filter { it.isNotEmpty() }.toList()
         val productArea = lines.dropWhile { !it.contains("订单编号") }.drop(1)
         val candidates = (productArea + lines).distinct()
             .filter { it.length in 4..80 && !blocked.containsMatchIn(it) && it.any { ch -> ch in '\u4e00'..'\u9fff' } }
             .filterNot { it.contains("全店回购") || it.contains("本店已拼") || it.contains("销量") || it.contains("退货包运费") || it.contains("驿站") || it.contains("文具店") }
-        return candidates.maxByOrNull { candidate -> (if (productArea.contains(candidate)) 1000 else 0) + candidate.count { it in '\u4e00'..'\u9fff' } * 10 + candidate.length } ?: "商品名待确认"
+        val productCandidates = candidates.filter { candidate ->
+            productHints.containsMatchIn(candidate) &&
+                candidate.count { it in '\u4e00'..'\u9fff' } >= 2 &&
+                !candidate.matches(Regex(".*(取件|地址|快递|驿站|导航|电话|订单|编号|昨天|今天|明天|后天).*"))
+        }
+        return productCandidates.maxByOrNull { candidate ->
+            (if (productArea.contains(candidate)) 1000 else 0) +
+                (if (productHints.containsMatchIn(candidate)) 200 else 0) +
+                candidate.count { it in '\u4e00'..'\u9fff' } * 10 + candidate.length
+        } ?: "商品名待确认"
     }
     private fun refresh() {
         list.removeAllViews()
