@@ -64,6 +64,7 @@ class MainActivity : Activity() {
     private lateinit var summary: TextView
     private lateinit var homePage: View
     private lateinit var minePage: View
+    private lateinit var pageDim: View
     private lateinit var handoffNote: View
     private lateinit var handoff: View
     private lateinit var homeNavItem: TextView
@@ -71,6 +72,8 @@ class MainActivity : Activity() {
     private lateinit var navPill: View
     private var pillAnimator: ValueAnimator? = null
     private val iosSpringInterpolator by lazy { PathInterpolator(0.32f, 0.72f, 0.35f, 1f) }
+    // 整页 push/pop 用近线性的 ease-in-out，两页联动全程可见；弹簧曲线起步太猛只适合小元素
+    private val pageInterpolator by lazy { PathInterpolator(0.42f, 0f, 0.58f, 1f) }
     // 统一动画曲线：标准减速（普通过渡）、轻微回弹（出现/按压恢复）
     private val standardInterpolator by lazy { PathInterpolator(0.2f, 0f, 0f, 1f) }
     private val appearInterpolator by lazy { OvershootInterpolator(0.85f) }
@@ -138,6 +141,9 @@ class MainActivity : Activity() {
         val pageContainer = FrameLayout(this).apply { clipChildren = true }
         pageContainer.addView(homePage, FrameLayout.LayoutParams(-1, -1))
         pageContainer.addView(minePage, FrameLayout.LayoutParams(-1, -1))
+        // 旧页压暗层：盖在旧页之上、新页之下，模拟 iOS push 时旧页后退的阴影
+        pageDim = View(this).apply { setBackgroundColor(Color.argb(52, 0, 0, 0)); alpha = 0f; visibility = View.INVISIBLE }
+        pageContainer.addView(pageDim, FrameLayout.LayoutParams(-1, -1))
         root.addView(pageContainer, LinearLayout.LayoutParams(-1, 0, 1f))
         root.addView(handoffNote)
         root.addView(handoff, LinearLayout.LayoutParams(-1, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = 6 })
@@ -239,6 +245,7 @@ class MainActivity : Activity() {
         currentHome = home
         homePage.animate().cancel()
         minePage.animate().cancel()
+        pageDim.animate().cancel()
         handoffNote.animate().cancel()
         handoff.animate().cancel()
         updateTabsVisual(home)
@@ -248,6 +255,7 @@ class MainActivity : Activity() {
             minePage.visibility = if (home) View.INVISIBLE else View.VISIBLE
             homePage.alpha = 1f; minePage.alpha = 1f
             homePage.translationX = 0f; minePage.translationX = 0f
+            pageDim.visibility = View.INVISIBLE; pageDim.alpha = 0f
             handoffNote.visibility = if (home) View.VISIBLE else View.INVISIBLE
             handoff.visibility = if (home) View.VISIBLE else View.INVISIBLE
             handoffNote.alpha = 1f; handoff.alpha = 1f
@@ -255,30 +263,43 @@ class MainActivity : Activity() {
             updatePillPosition(home, instant = true)
             return
         }
-        // 方向感：进入“我的”新页从右侧不透明滑入，返回“首页”从左侧滑入。
-        // 新页全程不透明并置顶遮盖旧页，旧页只做小幅视差淡出，两页文字永不叠加，杜绝撕裂感。
+        // iOS push/pop 联动：两页一起运动、旧页视差后退并压暗，而不是新页单独“盖过来”。
+        // push（去“我的”）：新页从右侧整宽滑入，旧页向左退到约 3/4 处并压暗；
+        // pop（回“首页”）：新页从左侧 3/4 处归位，旧页向右整宽滑出，压暗同步消退。
         val outgoing = if (home) minePage else homePage
         val incoming = if (home) homePage else minePage
-        val dir = if (home) -1 else 1
+        val w = incoming.width.takeIf { it > 0 } ?: resources.displayMetrics.widthPixels
+        val parallax = -w * 0.28f
+        val push = !home
+        val incomingFrom = if (push) w.toFloat() else parallax
+        val outgoingTo = if (push) parallax else w.toFloat()
         incoming.bringToFront()
         incoming.visibility = View.VISIBLE
         incoming.alpha = 1f
-        incoming.translationX = (dir * dp(28)).toFloat()
+        incoming.translationX = incomingFrom
+        outgoing.visibility = View.VISIBLE
+        outgoing.alpha = 1f
+        outgoing.translationX = 0f
+        pageDim.visibility = View.VISIBLE
+        pageDim.alpha = if (push) 0f else 1f
         incoming.animate().translationX(0f)
-            .setDuration(DUR_NORMAL.toLong()).setInterpolator(standardInterpolator)
+            .setDuration(DUR_PAGE.toLong()).setInterpolator(pageInterpolator)
             .withLayer().start()
-        outgoing.animate().alpha(0f).translationX((-dir * dp(14)).toFloat())
-            .setDuration(DUR_FAST.toLong()).setInterpolator(standardInterpolator)
+        outgoing.animate().translationX(outgoingTo)
+            .setDuration(DUR_PAGE.toLong()).setInterpolator(pageInterpolator)
             .withLayer()
             .withEndAction {
                 outgoing.visibility = View.INVISIBLE
-                outgoing.alpha = 1f; outgoing.translationX = 0f
+                outgoing.translationX = 0f
             }.start()
+        pageDim.animate().alpha(if (push) 1f else 0f)
+            .setDuration(DUR_PAGE.toLong()).setInterpolator(pageInterpolator)
+            .withEndAction { if (home) pageDim.visibility = View.INVISIBLE }.start()
         // 底部操作区跟随页面淡入淡出（INVISIBLE 占位，避免导航栏位置跳动）
         if (home) {
             listOf(handoffNote, handoff).forEach {
                 it.visibility = View.VISIBLE; it.alpha = 0f; it.translationY = dp(8).toFloat()
-                it.animate().alpha(1f).translationY(0f).setDuration(DUR_NORMAL.toLong()).setInterpolator(standardInterpolator).withLayer().start()
+                it.animate().alpha(1f).translationY(0f).setDuration(DUR_PAGE.toLong()).setInterpolator(pageInterpolator).withLayer().start()
             }
         } else {
             listOf(handoffNote, handoff).forEach {
@@ -639,6 +660,8 @@ class MainActivity : Activity() {
         private const val DUR_PRESS = 120
         private const val DUR_FAST = 180
         private const val DUR_NORMAL = 240
+        // 页面 push/pop 联动略慢一点，配合弹簧曲线更跟手
+        private const val DUR_PAGE = 300
         private const val DUR_EMPHASIS = 400
         private const val PILL_DURATION = 280
         private const val SPLASH_MS = 1180L

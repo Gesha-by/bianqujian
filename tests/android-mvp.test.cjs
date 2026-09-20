@@ -179,6 +179,14 @@ test('安卓 MVP 工程包含入口、清单和本地持久化逻辑', () => {
     assert.match(code, /View\.INVISIBLE/);
     assert.match(code, /isVerticalScrollBarEnabled = false/);
     assert.match(code, /setBackgroundColor\(Color\.rgb\(247,248,252\)\)/);
+    // iOS push/pop 联动：旧页视差后退 + 压暗层，新页整宽滑入/旧页整宽滑出
+    assert.match(code, /pageDim/);
+    assert.match(code, /Color\.argb\(52, 0, 0, 0\)/);
+    assert.match(code, /0\.28f/);
+    assert.match(code, /DUR_PAGE = 300/);
+    assert.match(code, /val push = !home/);
+    assert.match(code, /pageInterpolator/);
+    assert.match(code, /0\.42f, 0f, 0\.58f, 1f/);
     // 胶囊只平移不缩放，避免投影逐帧重算造成抖动
     assert.doesNotMatch(code, /navPill\.scaleX/);
 });
