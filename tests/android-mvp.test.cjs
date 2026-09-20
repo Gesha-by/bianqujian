@@ -107,4 +107,10 @@ test('安卓 MVP 工程包含入口、清单和本地持久化逻辑', () => {
   assert.doesNotMatch(code, /北区妈妈驿站文具店后面/);
   assert.match(listener, /else -> return/);
   assert.match(code, /Color\.WHITE, 16f/);
+  assert.match(code, /首页/);
+  assert.match(code, /我的/);
+  assert.match(code, /buildBottomNavigation/);
+  assert.match(code, /showPage\(false\)/);
+  assert.match(code, /handoff\.visibility = if \(home\)/);
+  assert.match(code, /bars\.bottom \+ dp\(8\)/);
 });

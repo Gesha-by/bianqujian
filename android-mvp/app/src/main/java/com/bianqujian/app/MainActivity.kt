@@ -49,6 +49,10 @@ class MainActivity : Activity() {
     private var selectedStatus: ParcelStatus? = null
     private var locationSummary = "取件点以截图识别结果为准"
     private lateinit var summary: TextView
+    private lateinit var homePage: View
+    private lateinit var minePage: View
+    private lateinit var handoffNote: View
+    private lateinit var handoff: View
     private val storage by lazy { getSharedPreferences("parcels", MODE_PRIVATE) }
     private val codePattern = Pattern.compile("(?<![A-Z0-9])[A-Z]{1,3}\\s*[-—–－]?\\s*\\d{1,4}(?:\\s*[-—–－]\\s*\\d{1,4}){1,2}(?![A-Z0-9])")
     private val updateReceiver = object : BroadcastReceiver() { override fun onReceive(context: Context?, intent: Intent?) { parcels.clear(); load(); refresh() } }
@@ -94,11 +98,54 @@ class MainActivity : Activity() {
         completedList = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
         addStatusTabs()
         summary = TextView(this).apply { textSize = 14f; setTextColor(Color.rgb(23,35,61)); setTypeface(null, 1); setPadding(12, 18, 2, 8) }
-        val handoffNote = TextView(this).apply { text = "取到包裹后，再进行最后一步"; textSize = 12f; setTextColor(Color.rgb(92,103,126)); setPadding(2, 16, 2, 6) }
-        val handoff = Button(this).apply { text = "第三步  打开拼多多扫描取件"; textSize = 15f; setTypeface(null, 1); setTextColor(Color.WHITE); background = rounded(Color.rgb(23,35,61), 24f); elevation = 0f; stateListAnimator = null; setPadding(16, 16, 16, 16); setOnClickListener { choosePddOpenMode() } }
+        handoffNote = TextView(this).apply { text = "取到包裹后，再进行最后一步"; textSize = 12f; setTextColor(Color.rgb(92,103,126)); setPadding(2, 16, 2, 6) }
+        handoff = Button(this).apply { text = "第三步  打开拼多多扫描取件"; textSize = 15f; setTypeface(null, 1); setTextColor(Color.WHITE); background = rounded(Color.rgb(23,35,61), 24f); elevation = 0f; stateListAnimator = null; setPadding(16, 16, 16, 16); setOnClickListener { choosePddOpenMode() } }
         val content = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(0, 0, 0, 12) }
         content.addView(title); content.addView(hero); content.addView(import, LinearLayout.LayoutParams(-1, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = 14 }); content.addView(autoSync, LinearLayout.LayoutParams(-1, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = 7 }); content.addView(simulate, LinearLayout.LayoutParams(-1, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = 7 }); content.addView(simulatePicked, LinearLayout.LayoutParams(-1, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = 7 }); content.addView(statusTabs); content.addView(summary); content.addView(list)
-        root.addView(ScrollView(this).apply { isFillViewport = true; addView(content) }, LinearLayout.LayoutParams(-1, 0, 1f)); root.addView(handoffNote); root.addView(handoff, LinearLayout.LayoutParams(-1, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = 6 }); setContentView(root); refresh()
+        homePage = ScrollView(this).apply { isFillViewport = true; addView(content) }
+        minePage = buildMinePage()
+        minePage.visibility = View.GONE
+        val bottomNav = buildBottomNavigation()
+        root.addView(homePage, LinearLayout.LayoutParams(-1, 0, 1f))
+        root.addView(minePage, LinearLayout.LayoutParams(-1, 0, 1f))
+        root.addView(handoffNote)
+        root.addView(handoff, LinearLayout.LayoutParams(-1, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = 6 })
+        root.addView(bottomNav, LinearLayout.LayoutParams(-1, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(10) })
+        root.setOnApplyWindowInsetsListener { view, insets ->
+            val bars = insets.getInsets(android.view.WindowInsets.Type.systemBars())
+            view.setPadding(dp(20), view.paddingTop, dp(20), bars.bottom + dp(8))
+            insets
+        }
+        setContentView(root); root.requestApplyInsets(); refresh()
+    }
+
+    private fun buildMinePage(): View {
+        val content = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(0, dp(8), 0, dp(16)) }
+        content.addView(TextView(this).apply { text = "我的"; textSize = 26f; setTypeface(null, 1); setTextColor(Color.rgb(28,28,30)); setPadding(dp(2), dp(8), dp(2), dp(18)) })
+        content.addView(TextView(this).apply { text = "便取件设置"; textSize = 13f; setTypeface(null, 1); setTextColor(Color.rgb(104,119,146)); setPadding(dp(2), 0, dp(2), dp(8)) })
+        val notification = TextView(this).apply { text = if (isNotificationAccessEnabled()) "通知自动同步　已开启" else "通知自动同步　未开启"; textSize = 15f; setTextColor(Color.rgb(23,35,61)); gravity = Gravity.CENTER_VERTICAL; setPadding(dp(16), dp(16), dp(16), dp(16)); background = rounded(Color.WHITE, 16f); setOnClickListener { startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)) } }
+        content.addView(notification, LinearLayout.LayoutParams(-1, dp(58)).apply { bottomMargin = dp(10) })
+        val point = storage.getString("frequent_pickup_point", "").orEmpty().ifBlank { "暂无记录" }
+        content.addView(TextView(this).apply { text = "常用取件点\n$point"; textSize = 15f; setTextColor(Color.rgb(23,35,61)); setPadding(dp(16), dp(14), dp(16), dp(14)); background = rounded(Color.WHITE, 16f) }, LinearLayout.LayoutParams(-1, ViewGroup.LayoutParams.WRAP_CONTENT))
+        content.addView(TextView(this).apply { text = "更多设置将在后续版本逐步加入"; textSize = 12f; setTextColor(Color.rgb(142,142,147)); setPadding(dp(2), dp(24), dp(2), 0) })
+        return ScrollView(this).apply { isFillViewport = true; addView(content) }
+    }
+
+    private fun buildBottomNavigation(): LinearLayout {
+        val nav = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER; setPadding(0, dp(4), 0, 0) }
+        fun item(label: String, selected: Boolean, onClick: () -> Unit) = TextView(this).apply {
+            text = label; textSize = 12f; gravity = Gravity.CENTER; setTypeface(null, 1); setTextColor(if (selected) Color.rgb(66,99,235) else Color.rgb(104,119,146)); setPadding(0, dp(9), 0, dp(9)); setOnClickListener { onClick() }
+        }
+        nav.addView(item("⌂\n首页", true) { showPage(true) }, LinearLayout.LayoutParams(0, dp(52), 1f))
+        nav.addView(item("○\n我的", false) { showPage(false) }, LinearLayout.LayoutParams(0, dp(52), 1f))
+        return nav
+    }
+
+    private fun showPage(home: Boolean) {
+        homePage.visibility = if (home) View.VISIBLE else View.GONE
+        minePage.visibility = if (home) View.GONE else View.VISIBLE
+        handoffNote.visibility = if (home) View.VISIBLE else View.GONE
+        handoff.visibility = if (home) View.VISIBLE else View.GONE
     }
 
     private fun addStatusTabs() {
