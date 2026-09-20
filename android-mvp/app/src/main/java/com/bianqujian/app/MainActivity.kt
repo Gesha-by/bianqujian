@@ -146,31 +146,42 @@ class MainActivity : Activity() {
         content.addView(history, LinearLayout.LayoutParams(-1, ViewGroup.LayoutParams.WRAP_CONTENT).apply { bottomMargin = dp(10) })
         val clear = TextView(this).apply { text = "清理记录\n删除本机保存的包裹数据"; textSize = 15f; setTextColor(Color.rgb(198,65,65)); setPadding(dp(16), dp(14), dp(16), dp(14)); background = rounded(Color.WHITE, 16f); setOnClickListener { AlertDialog.Builder(this@MainActivity).setTitle("清理记录").setMessage("确定删除本机保存的所有包裹记录吗？此操作不可撤销。").setNegativeButton("取消", null).setPositiveButton("删除") { _, _ -> parcels.clear(); save(); refresh(); Toast.makeText(this@MainActivity, "记录已清理", Toast.LENGTH_SHORT).show() }.show() } }
         content.addView(clear, LinearLayout.LayoutParams(-1, ViewGroup.LayoutParams.WRAP_CONTENT).apply { bottomMargin = dp(10) })
-        content.addView(TextView(this).apply { text = "关于便取件\n版本 0.1.0 · 本地优先的校园取件清单"; textSize = 15f; setTextColor(Color.rgb(23,35,61)); setPadding(dp(16), dp(14), dp(16), dp(14)); background = rounded(Color.WHITE, 16f); setOnClickListener { AlertDialog.Builder(this@MainActivity).setTitle("关于便取件").setMessage("便取件帮助你在下楼前整理待取包裹。数据默认保存在本机，出库仍由拼多多完成。").setPositiveButton("知道了", null).show() } })
+        content.addView(TextView(this).apply { text = "关于便取件\n功能介绍 · 改进想法 · 版本更新"; textSize = 15f; setTextColor(Color.rgb(23,35,61)); setPadding(dp(16), dp(14), dp(16), dp(14)); background = rounded(Color.WHITE, 16f); setOnClickListener { showAboutDialog() } })
         return ScrollView(this).apply { isFillViewport = true; addView(content) }
+    }
+
+    private fun showAboutDialog() {
+        val about = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(20), 0, dp(20), 0) }
+        fun section(title: String, body: String) {
+            about.addView(TextView(this).apply { text = title; textSize = 15f; setTypeface(null, 1); setTextColor(Color.rgb(23,35,61)); setPadding(0, dp(12), 0, dp(4)) })
+            about.addView(TextView(this).apply { text = body; textSize = 13f; setTextColor(Color.rgb(104,119,146)); setPadding(0, 0, 0, dp(8)) })
+        }
+        section("功能介绍", "导入到件截图，识别取件码和取件点，整理待取包裹；取件后可通过第三步打开拼多多完成扫描。")
+        section("改进想法", "如果你有更好用的取件流程、识别体验或页面建议，可以告诉我们，后续会持续优化。")
+        section("版本更新", "当前版本 0.1.0\n已支持：截图识别、通知自动同步、包裹状态管理和本地历史记录。")
+        AlertDialog.Builder(this).setTitle("关于便取件").setView(about).setPositiveButton("知道了", null).show()
     }
 
     private fun buildBottomNavigation(): FrameLayout {
         val nav = FrameLayout(this).apply {
             layoutParams = LinearLayout.LayoutParams(-1, dp(60))
             setPadding(dp(4), dp(4), dp(4), dp(4))
-            background = GradientDrawable().apply { setColor(Color.argb(195, 255, 255, 255)); cornerRadius = 999f }
-            elevation = dp(8).toFloat()
         }
         navPill = GlassPillView(this).apply {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                setRenderEffect(RenderEffect.createBlurEffect(8f, 8f, Shader.TileMode.CLAMP))
+                setRenderEffect(RenderEffect.createBlurEffect(10f, 10f, Shader.TileMode.CLAMP))
             }
         }
         nav.addView(navPill, FrameLayout.LayoutParams(dp(84), dp(46)).apply { gravity = Gravity.CENTER_VERTICAL })
         val items = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
         fun item(label: String, selected: Boolean, onClick: () -> Unit) = TextView(this).apply {
-            text = label; textSize = 12f; gravity = Gravity.CENTER; includeFontPadding = true; setTypeface(null, 1); setTextColor(if (selected) Color.rgb(0,0,0) else Color.rgb(104,119,146)); setPadding(0, dp(4), 0, dp(4)); setOnClickListener { onClick() }
+            text = label; textSize = 12f; gravity = Gravity.CENTER; includeFontPadding = true; setTypeface(null, 1); setTextColor(if (selected) Color.rgb(30,30,30) else Color.rgb(225,225,230)); setPadding(0, dp(4), 0, dp(4)); setOnClickListener { onClick() }
+            background = GradientDrawable().apply { setColor(Color.argb(175, 35, 35, 40)); cornerRadius = 999f }
         }
         homeNavItem = item("⌂\n首页", true) { showPage(true) }
         mineNavItem = item("○\n我的", false) { showPage(false) }
-        items.addView(homeNavItem, LinearLayout.LayoutParams(0, dp(60), 1f))
-        items.addView(mineNavItem, LinearLayout.LayoutParams(0, dp(60), 1f))
+        items.addView(homeNavItem, LinearLayout.LayoutParams(0, dp(52), 1f).apply { marginEnd = dp(6) })
+        items.addView(mineNavItem, LinearLayout.LayoutParams(0, dp(52), 1f).apply { marginStart = dp(6) })
         nav.addView(items, FrameLayout.LayoutParams(-1, -1))
         nav.post { updatePillPosition(true) }
         return nav
@@ -187,8 +198,8 @@ class MainActivity : Activity() {
         minePage.visibility = if (home) View.GONE else View.VISIBLE
         handoffNote.visibility = if (home) View.VISIBLE else View.GONE
         handoff.visibility = if (home) View.VISIBLE else View.GONE
-        homeNavItem.setTextColor(if (home) Color.rgb(0,0,0) else Color.rgb(104,119,146))
-        mineNavItem.setTextColor(if (home) Color.rgb(104,119,146) else Color.rgb(0,0,0))
+        homeNavItem.setTextColor(if (home) Color.rgb(30,30,30) else Color.rgb(225,225,230))
+        mineNavItem.setTextColor(if (home) Color.rgb(225,225,230) else Color.rgb(30,30,30))
         updatePillPosition(home)
     }
 
