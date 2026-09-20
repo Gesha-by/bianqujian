@@ -117,5 +117,13 @@ test('安卓 MVP 工程包含入口、清单和本地持久化逻辑', () => {
   assert.match(code, /homeNavItem\.setTextColor/);
   assert.match(code, /mineNavItem\.setTextColor/);
   assert.match(code, /includeFontPadding = true/);
-  assert.match(code, /dp\(60\)/);
+    assert.match(code, /dp\(60\)/);
+    assert.match(code, /navPill/);
+    assert.match(code, /updatePillPosition/);
+    assert.match(code, /ValueAnimator/);
+    assert.match(code, /OvershootInterpolator/);
+    assert.match(code, /DecelerateInterpolator/);
+    assert.match(code, /FrameLayout\(this\)/);
+    assert.match(code, /Color\.argb\(245, 255, 255, 255\)/);
+    assert.match(code, /Color\.argb\(230, 235, 235, 240\)/);
 });
