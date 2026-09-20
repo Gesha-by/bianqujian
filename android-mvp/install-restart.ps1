@@ -17,7 +17,13 @@ if ($LASTEXITCODE -ne 0) {
     & $adb shell cmd package uninstall -k com.bianqujian.app
     if ($LASTEXITCODE -ne 0) { throw '旧版应用移除失败' }
     & $adb install -r $apk
-    if ($LASTEXITCODE -ne 0) { throw 'APK 安装失败' }
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host '设备仍保留旧签名，执行彻底卸载后重装。'
+        & $adb uninstall com.bianqujian.app
+        if ($LASTEXITCODE -ne 0) { throw '旧版应用彻底移除失败' }
+        & $adb install -r $apk
+        if ($LASTEXITCODE -ne 0) { throw 'APK 安装失败' }
+    }
 }
 
 & $adb shell am force-stop com.bianqujian.app

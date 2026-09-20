@@ -90,6 +90,7 @@ test('安卓 MVP 工程包含入口、清单和本地持久化逻辑', () => {
   assert.match(deploy, /assembleDebug/);
   assert.match(deploy, /install -r/);
   assert.match(deploy, /shell cmd package uninstall -k com\.bianqujian\.app/);
+  assert.match(deploy, /uninstall com\.bianqujian\.app/);
   assert.match(deploy, /force-stop com\.bianqujian\.app/);
   assert.match(deploy, /monkey -p com\.bianqujian\.app/);
   assert.match(code, /location: String/);
