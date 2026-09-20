@@ -121,7 +121,7 @@ class MainActivity : Activity() {
         root.addView(bottomNav, LinearLayout.LayoutParams(-1, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(10) })
         root.setOnApplyWindowInsetsListener { view, insets ->
             val bars = insets.getInsets(android.view.WindowInsets.Type.systemBars())
-            view.setPadding(dp(20), view.paddingTop, dp(20), bars.bottom + dp(8))
+            view.setPadding(dp(20), bars.top + dp(24), dp(20), bars.bottom + dp(8))
             insets
         }
         setContentView(root); root.requestApplyInsets(); refresh()
