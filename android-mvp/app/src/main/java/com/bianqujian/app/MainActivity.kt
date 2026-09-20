@@ -146,7 +146,7 @@ class MainActivity : Activity() {
         content.addView(history, LinearLayout.LayoutParams(-1, ViewGroup.LayoutParams.WRAP_CONTENT).apply { bottomMargin = dp(10) })
         val clear = TextView(this).apply { text = "清理记录\n删除本机保存的包裹数据"; textSize = 15f; setTextColor(Color.rgb(198,65,65)); setPadding(dp(16), dp(14), dp(16), dp(14)); background = rounded(Color.WHITE, 16f); setOnClickListener { AlertDialog.Builder(this@MainActivity).setTitle("清理记录").setMessage("确定删除本机保存的所有包裹记录吗？此操作不可撤销。").setNegativeButton("取消", null).setPositiveButton("删除") { _, _ -> parcels.clear(); save(); refresh(); Toast.makeText(this@MainActivity, "记录已清理", Toast.LENGTH_SHORT).show() }.show() } }
         content.addView(clear, LinearLayout.LayoutParams(-1, ViewGroup.LayoutParams.WRAP_CONTENT).apply { bottomMargin = dp(10) })
-        content.addView(TextView(this).apply { text = "关于便取件\n功能介绍 · 改进想法 · 版本更新"; textSize = 15f; setTextColor(Color.rgb(23,35,61)); setPadding(dp(16), dp(14), dp(16), dp(14)); background = rounded(Color.WHITE, 16f); setOnClickListener { showAboutDialog() } })
+        content.addView(TextView(this).apply { text = "关于便取件"; textSize = 15f; setTextColor(Color.rgb(23,35,61)); setPadding(dp(16), dp(14), dp(16), dp(14)); background = rounded(Color.WHITE, 16f); setOnClickListener { showAboutDialog() } })
         return ScrollView(this).apply { isFillViewport = true; addView(content) }
     }
 
@@ -187,8 +187,11 @@ class MainActivity : Activity() {
         nav.addView(navPill, FrameLayout.LayoutParams(dp(84), dp(46)).apply { gravity = Gravity.CENTER_VERTICAL })
         val items = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
         fun item(label: String, selected: Boolean, onClick: () -> Unit) = TextView(this).apply {
-            text = label; textSize = 12f; gravity = Gravity.CENTER; includeFontPadding = true; setTypeface(null, 1); setTextColor(if (selected) Color.rgb(30,30,30) else Color.rgb(225,225,230)); setPadding(0, dp(4), 0, dp(4)); setOnClickListener { onClick() }
-            background = if (selected) null else GradientDrawable().apply { setColor(Color.argb(175, 35, 35, 40)); cornerRadius = 999f }
+            text = label; textSize = 12f; gravity = Gravity.CENTER; includeFontPadding = true; setTypeface(null, 1); setTextColor(if (selected) Color.rgb(30,30,30) else Color.rgb(235,235,240)); setPadding(0, dp(4), 0, dp(4)); setOnClickListener { onClick() }
+            background = if (selected) null else GradientDrawable().apply { setColor(Color.argb(85, 30, 30, 35)); cornerRadius = 999f }
+            if (!selected && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                setRenderEffect(RenderEffect.createBlurEffect(6f, 6f, Shader.TileMode.CLAMP))
+            }
         }
         homeNavItem = item("⌂\n首页", true) { showPage(true) }
         mineNavItem = item("○\n我的", false) { showPage(false) }
@@ -212,8 +215,12 @@ class MainActivity : Activity() {
         handoff.visibility = if (home) View.VISIBLE else View.GONE
         homeNavItem.setTextColor(if (home) Color.rgb(30,30,30) else Color.rgb(225,225,230))
         mineNavItem.setTextColor(if (home) Color.rgb(225,225,230) else Color.rgb(30,30,30))
-        homeNavItem.background = if (home) null else GradientDrawable().apply { setColor(Color.argb(175, 35, 35, 40)); cornerRadius = 999f }
-        mineNavItem.background = if (home) GradientDrawable().apply { setColor(Color.argb(175, 35, 35, 40)); cornerRadius = 999f } else null
+        homeNavItem.background = if (home) null else GradientDrawable().apply { setColor(Color.argb(85, 30, 30, 35)); cornerRadius = 999f }
+        mineNavItem.background = if (home) GradientDrawable().apply { setColor(Color.argb(85, 30, 30, 35)); cornerRadius = 999f } else null
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            homeNavItem.setRenderEffect(if (home) null else RenderEffect.createBlurEffect(6f, 6f, Shader.TileMode.CLAMP))
+            mineNavItem.setRenderEffect(if (home) RenderEffect.createBlurEffect(6f, 6f, Shader.TileMode.CLAMP) else null)
+        }
         updatePillPosition(home)
     }
 
