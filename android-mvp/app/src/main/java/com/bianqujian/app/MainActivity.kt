@@ -177,21 +177,14 @@ class MainActivity : Activity() {
     }
 
     private fun showPage(home: Boolean) {
-        val entering = if (home) homePage else minePage
-        val leaving = if (home) minePage else homePage
-        if (leaving.visibility == View.VISIBLE && entering.visibility == View.GONE) {
-            entering.translationX = if (home) -dp(22).toFloat() else dp(22).toFloat()
-            entering.alpha = 0f
-            entering.visibility = View.VISIBLE
-            leaving.animate().translationX(if (home) dp(22).toFloat() else -dp(22).toFloat()).alpha(0f).setDuration(320).setInterpolator(iosSpringInterpolator).withEndAction {
-                leaving.visibility = View.GONE
-                leaving.translationX = 0f
-            }.start()
-            entering.animate().translationX(0f).alpha(1f).setDuration(360).setInterpolator(iosSpringInterpolator).start()
-        } else {
-            homePage.visibility = if (home) View.VISIBLE else View.GONE
-            minePage.visibility = if (home) View.GONE else View.VISIBLE
-        }
+        homePage.animate().cancel()
+        minePage.animate().cancel()
+        homePage.translationX = 0f
+        minePage.translationX = 0f
+        homePage.alpha = 1f
+        minePage.alpha = 1f
+        homePage.visibility = if (home) View.VISIBLE else View.GONE
+        minePage.visibility = if (home) View.GONE else View.VISIBLE
         handoffNote.visibility = if (home) View.VISIBLE else View.GONE
         handoff.visibility = if (home) View.VISIBLE else View.GONE
         homeNavItem.setTextColor(if (home) Color.rgb(0,0,0) else Color.rgb(104,119,146))

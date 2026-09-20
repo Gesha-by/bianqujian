@@ -126,6 +126,8 @@ test('安卓 MVP 工程包含入口、清单和本地持久化逻辑', () => {
     assert.match(code, /iosSpringInterpolator/);
     assert.match(code, /0\.32f, 0\.72f, 0\.35f, 1f/);
     assert.match(code, /FrameLayout\(this\)/);
+    assert.match(code, /homePage\.animate\(\)\.cancel\(\)/);
+    assert.match(code, /minePage\.animate\(\)\.cancel\(\)/);
     assert.match(code, /GlassPillView/);
     assert.match(code, /Color\.argb\(195, 255, 255, 255\)/);
     assert.match(code, /cornerRadius = 999f/);
