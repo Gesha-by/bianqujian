@@ -151,15 +151,27 @@ class MainActivity : Activity() {
     }
 
     private fun showAboutDialog() {
-        val about = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(20), 0, dp(20), 0) }
-        fun section(title: String, body: String) {
-            about.addView(TextView(this).apply { text = title; textSize = 15f; setTypeface(null, 1); setTextColor(Color.rgb(23,35,61)); setPadding(0, dp(12), 0, dp(4)) })
-            about.addView(TextView(this).apply { text = body; textSize = 13f; setTextColor(Color.rgb(104,119,146)); setPadding(0, 0, 0, dp(8)) })
+        val about = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(24), dp(20), dp(24), dp(24)); setBackgroundColor(Color.rgb(247,248,252)) }
+        val header = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER_HORIZONTAL; setPadding(0, dp(12), 0, dp(22)) }
+        header.addView(ImageView(this).apply { setImageResource(R.drawable.ic_bqj_app); scaleType = ImageView.ScaleType.CENTER_INSIDE }, LinearLayout.LayoutParams(dp(72), dp(72)))
+        header.addView(TextView(this).apply { text = "便取件"; textSize = 21f; setTypeface(null, 1); setTextColor(Color.rgb(23,35,61)); setPadding(0, dp(10), 0, dp(3)) })
+        header.addView(TextView(this).apply { text = "Version 0.1.0"; textSize = 13f; setTextColor(Color.rgb(104,119,146)) })
+        about.addView(header)
+        fun option(icon: String, title: String, onClick: () -> Unit) = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER; isClickable = true; setOnClickListener { onClick() }; background = rounded(Color.WHITE, 18f); elevation = dp(1).toFloat()
+            addView(TextView(this@MainActivity).apply { text = icon; textSize = 28f; gravity = Gravity.CENTER; setTextColor(Color.rgb(66,99,235)) }, LinearLayout.LayoutParams(-1, dp(42)))
+            addView(TextView(this@MainActivity).apply { text = title; textSize = 14f; setTypeface(null, 1); gravity = Gravity.CENTER; setTextColor(Color.rgb(23,35,61)) })
         }
-        section("功能介绍", "导入到件截图，识别取件码和取件点，整理待取包裹；取件后可通过第三步打开拼多多完成扫描。")
-        section("改进想法", "如果你有更好用的取件流程、识别体验或页面建议，可以告诉我们，后续会持续优化。")
-        section("版本更新", "当前版本 0.1.0\n已支持：截图识别、通知自动同步、包裹状态管理和本地历史记录。")
-        AlertDialog.Builder(this).setTitle("关于便取件").setView(about).setPositiveButton("知道了", null).show()
+        val options = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER_HORIZONTAL }
+        options.addView(option("ⓘ", "功能介绍") { showAboutSection("功能介绍", "导入到件截图，识别取件码和取件点，整理待取包裹；取件后可通过第三步打开拼多多完成扫描。") }, LinearLayout.LayoutParams(-1, dp(88)).apply { bottomMargin = dp(12) })
+        options.addView(option("✦", "改进想法") { showAboutSection("改进想法", "如果你有更好用的取件流程、识别体验或页面建议，可以告诉我们，后续会持续优化。") }, LinearLayout.LayoutParams(-1, dp(88)).apply { bottomMargin = dp(12) })
+        options.addView(option("↻", "版本更新") { showAboutSection("版本更新", "当前版本 0.1.0\n已支持：截图识别、通知自动同步、包裹状态管理和本地历史记录。") }, LinearLayout.LayoutParams(-1, dp(88)))
+        about.addView(options, LinearLayout.LayoutParams(-1, 0, 1f))
+        AlertDialog.Builder(this).setTitle("关于便取件").setView(about).setNegativeButton("返回", null).show()
+    }
+
+    private fun showAboutSection(title: String, body: String) {
+        AlertDialog.Builder(this).setTitle(title).setMessage(body).setPositiveButton("知道了", null).show()
     }
 
     private fun buildBottomNavigation(): FrameLayout {
