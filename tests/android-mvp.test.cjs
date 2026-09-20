@@ -139,10 +139,13 @@ test('安卓 MVP 工程包含入口、清单和本地持久化逻辑', () => {
     assert.match(code, /showAboutSection/);
     assert.match(code, /gravity = Gravity\.CENTER_HORIZONTAL/);
     assert.match(code, /ic_bqj_app/);
-    assert.match(code, /Color\.argb\(130, 42, 42, 48\)/);
-    assert.match(code, /glassTabBg/);
-    assert.match(code, /setStroke\(dp\(1\), Color\.argb\(80, 255, 255, 255\)\)/);
-    assert.match(code, /cornerRadius = 999f/);
+    // 选中态：白色滑动胶囊 + 投影；未选中项无深灰底，只用灰色文字
+    assert.doesNotMatch(code, /glassTabBg/);
+    assert.doesNotMatch(code, /Color\.argb\(130, 42, 42, 48\)/);
+    assert.match(code, /Color\.rgb\(138,140,146\)/);
+    assert.match(code, /outlineProvider/);
+    assert.match(code, /elevation = dp\(6\)\.toFloat\(\)/);
+    assert.match(code, /val targetW = /);
     assert.match(code, /LinearGradient\(0f, 0f, 0f, h/);
     assert.match(code, /Color\.argb\(250, 255, 255, 255\)/);
     // 统一动画体系：三档时长、标准曲线、减少动态效果

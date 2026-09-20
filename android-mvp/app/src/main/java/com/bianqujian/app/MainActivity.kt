@@ -202,22 +202,32 @@ class MainActivity : Activity() {
             setPadding(dp(4), dp(4), dp(4), dp(4))
         }
         navPill = GlassPillView(this).apply {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                setRenderEffect(RenderEffect.createBlurEffect(10f, 10f, Shader.TileMode.CLAMP))
+            elevation = dp(6).toFloat()
+            outlineProvider = object : android.view.ViewOutlineProvider() {
+                override fun getOutline(view: View, outline: android.graphics.Outline) {
+                    outline.setRoundRect(0, 0, view.width, view.height, view.height / 2f)
+                }
             }
+            clipToOutline = true
         }
-        nav.addView(navPill, FrameLayout.LayoutParams(dp(84), dp(46)).apply { gravity = Gravity.CENTER_VERTICAL })
+        val pillLp = FrameLayout.LayoutParams(dp(84), dp(44)).apply { gravity = Gravity.CENTER_VERTICAL }
+        nav.addView(navPill, pillLp)
         val items = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
         fun item(label: String, selected: Boolean, onClick: () -> Unit) = TextView(this).apply {
-            text = label; textSize = 12f; gravity = Gravity.CENTER; includeFontPadding = true; setTypeface(null, 1); setTextColor(if (selected) Color.rgb(30,30,30) else Color.rgb(245,245,248)); setPadding(0, dp(4), 0, dp(4)); setOnClickListener { onClick() }
-            background = if (selected) null else glassTabBg()
+            text = label; textSize = 12f; gravity = Gravity.CENTER; includeFontPadding = true; setTypeface(null, if (selected) 1 else 0); setTextColor(if (selected) Color.rgb(28,28,30) else Color.rgb(138,140,146)); setPadding(0, dp(4), 0, dp(4)); setOnClickListener { onClick() }
         }
         homeNavItem = item("⌂\n首页", true) { showPage(true) }
         mineNavItem = item("○\n我的", false) { showPage(false) }
         items.addView(homeNavItem, LinearLayout.LayoutParams(0, dp(52), 1f).apply { marginEnd = dp(6) })
         items.addView(mineNavItem, LinearLayout.LayoutParams(0, dp(52), 1f).apply { marginStart = dp(6) })
         nav.addView(items, FrameLayout.LayoutParams(-1, -1))
-        nav.post { updatePillPosition(currentHome, instant = true) }
+        nav.post {
+            // 胶囊宽度与单个 Tab 等宽（两侧各留 2dp 呼吸），中心对齐 25% / 75%
+            val gap = dp(12) // 两个 item 之间的 marginStart + marginEnd
+            val targetW = ((nav.width - nav.paddingLeft - nav.paddingRight - gap) / 2).coerceAtLeast(dp(84))
+            navPill.layoutParams = (navPill.layoutParams as FrameLayout.LayoutParams).apply { width = targetW }
+            updatePillPosition(currentHome, instant = true)
+        }
         return nav
     }
 
@@ -273,17 +283,11 @@ class MainActivity : Activity() {
     }
 
     private fun updateTabsVisual(home: Boolean) {
-        homeNavItem.setTextColor(if (home) Color.rgb(30,30,30) else Color.rgb(245,245,248))
-        mineNavItem.setTextColor(if (home) Color.rgb(245,245,248) else Color.rgb(30,30,30))
-        homeNavItem.background = if (home) null else glassTabBg()
-        mineNavItem.background = if (home) glassTabBg() else null
-    }
-
-    // 未选中 Tab 的深色毛玻璃底：半透明深色 + 顶部亮边，文字不做模糊保持清晰
-    private fun glassTabBg(): GradientDrawable = GradientDrawable().apply {
-        setColor(Color.argb(130, 42, 42, 48))
-        cornerRadius = 999f
-        setStroke(dp(1), Color.argb(80, 255, 255, 255))
+        // 选中：深色文字加粗（白色滑动胶囊在其背后）；未选中：iOS 标准灰、常规字重
+        homeNavItem.setTextColor(if (home) Color.rgb(28,28,30) else Color.rgb(138,140,146))
+        mineNavItem.setTextColor(if (home) Color.rgb(138,140,146) else Color.rgb(28,28,30))
+        homeNavItem.setTypeface(null, if (home) 1 else 0)
+        mineNavItem.setTypeface(null, if (home) 0 else 1)
     }
 
     private fun updatePillPosition(home: Boolean, instant: Boolean = false) {
@@ -291,7 +295,10 @@ class MainActivity : Activity() {
         if (nav.width == 0) { nav.post { updatePillPosition(home, instant) }; return }
         val navWidth = nav.width - nav.paddingLeft - nav.paddingRight
         val pillWidth = navPill.width.takeIf { it > 0 } ?: dp(80)
-        val targetX = nav.paddingLeft + (if (home) navWidth * 0.25f else navWidth * 0.75f) - pillWidth / 2f
+        // 与两个等宽 item 的中心精确对齐（item 间距 12dp）
+        val itemW = (navWidth - dp(12)).coerceAtLeast(0) / 2f
+        val center = if (home) itemW / 2f else navWidth - itemW / 2f
+        val targetX = nav.paddingLeft + center - pillWidth / 2f
         if (instant || reduceMotion) {
             pillAnimator?.cancel()
             navPill.translationX = targetX
