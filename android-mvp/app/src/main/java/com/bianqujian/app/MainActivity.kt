@@ -37,6 +37,9 @@ import android.graphics.Canvas
 import android.graphics.Paint
 import android.graphics.Path
 import android.graphics.Typeface
+import android.animation.ValueAnimator
+import android.view.animation.DecelerateInterpolator
+import android.view.animation.OvershootInterpolator
 
 enum class ParcelStatus { IN_TRANSIT, READY, PICKED_UP, CANCELLED }
 data class Parcel(val code: String, val name: String = "未提供商品名", var found: Boolean = false, var status: ParcelStatus = ParcelStatus.READY, val source: String = "截图识别", val location: String = "未识别位置", val parcelType: String = "未知类型", val carrier: String = "未知快递", val trackingNumber: String = "未知运单号", val updatedAt: String = "未知时间", val imagePath: String = "")
@@ -55,6 +58,8 @@ class MainActivity : Activity() {
     private lateinit var handoff: View
     private lateinit var homeNavItem: TextView
     private lateinit var mineNavItem: TextView
+    private lateinit var navPill: View
+    private var pillAnimator: ValueAnimator? = null
     private val storage by lazy { getSharedPreferences("parcels", MODE_PRIVATE) }
     private val codePattern = Pattern.compile("(?<![A-Z0-9])[A-Z]{1,3}\\s*[-—–－]?\\s*\\d{1,4}(?:\\s*[-—–－]\\s*\\d{1,4}){1,2}(?![A-Z0-9])")
     private val updateReceiver = object : BroadcastReceiver() { override fun onReceive(context: Context?, intent: Intent?) { parcels.clear(); load(); refresh() } }
@@ -63,6 +68,7 @@ class MainActivity : Activity() {
     override fun onResume() {
         super.onResume()
         registerReceiver(updateReceiver, IntentFilter(ParcelNotificationListener.ACTION_UPDATED), RECEIVER_NOT_EXPORTED)
+        render()
     }
     override fun onPause() { unregisterReceiver(updateReceiver); super.onPause() }
 
@@ -133,25 +139,67 @@ class MainActivity : Activity() {
         return ScrollView(this).apply { isFillViewport = true; addView(content) }
     }
 
-    private fun buildBottomNavigation(): LinearLayout {
-        val nav = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER; setPadding(0, dp(4), 0, 0) }
+    private fun buildBottomNavigation(): FrameLayout {
+        val nav = FrameLayout(this).apply {
+            layoutParams = LinearLayout.LayoutParams(-1, dp(60))
+            setPadding(dp(4), dp(4), dp(4), dp(4))
+            background = rounded(Color.argb(245, 255, 255, 255), 24f)
+            elevation = dp(6).toFloat()
+        }
+        navPill = View(this).apply {
+            background = rounded(Color.argb(230, 235, 235, 240), 18f)
+            elevation = dp(2).toFloat()
+        }
+        nav.addView(navPill, FrameLayout.LayoutParams(dp(80), dp(44)).apply { gravity = Gravity.CENTER_VERTICAL })
+        val items = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
         fun item(label: String, selected: Boolean, onClick: () -> Unit) = TextView(this).apply {
-            text = label; textSize = 12f; gravity = Gravity.CENTER; includeFontPadding = true; setTypeface(null, 1); setTextColor(if (selected) Color.rgb(66,99,235) else Color.rgb(104,119,146)); setPadding(0, dp(4), 0, dp(4)); setOnClickListener { onClick() }
+            text = label; textSize = 12f; gravity = Gravity.CENTER; includeFontPadding = true; setTypeface(null, 1); setTextColor(if (selected) Color.rgb(0,0,0) else Color.rgb(104,119,146)); setPadding(0, dp(4), 0, dp(4)); setOnClickListener { onClick() }
         }
         homeNavItem = item("⌂\n首页", true) { showPage(true) }
         mineNavItem = item("○\n我的", false) { showPage(false) }
-        nav.addView(homeNavItem, LinearLayout.LayoutParams(0, dp(60), 1f))
-        nav.addView(mineNavItem, LinearLayout.LayoutParams(0, dp(60), 1f))
+        items.addView(homeNavItem, LinearLayout.LayoutParams(0, dp(60), 1f))
+        items.addView(mineNavItem, LinearLayout.LayoutParams(0, dp(60), 1f))
+        nav.addView(items, FrameLayout.LayoutParams(-1, -1))
+        nav.post { updatePillPosition(true) }
         return nav
     }
 
     private fun showPage(home: Boolean) {
-        homePage.visibility = if (home) View.VISIBLE else View.GONE
-        minePage.visibility = if (home) View.GONE else View.VISIBLE
+        val entering = if (home) homePage else minePage
+        val leaving = if (home) minePage else homePage
+        if (leaving.visibility == View.VISIBLE && entering.visibility == View.GONE) {
+            entering.translationX = if (home) -dp(28).toFloat() else dp(28).toFloat()
+            entering.alpha = 0f
+            entering.visibility = View.VISIBLE
+            leaving.animate().translationX(if (home) dp(28).toFloat() else -dp(28).toFloat()).alpha(0f).setDuration(220).setInterpolator(DecelerateInterpolator(1.2f)).withEndAction {
+                leaving.visibility = View.GONE
+                leaving.translationX = 0f
+            }.start()
+            entering.animate().translationX(0f).alpha(1f).setDuration(260).setInterpolator(DecelerateInterpolator(1.2f)).start()
+        } else {
+            homePage.visibility = if (home) View.VISIBLE else View.GONE
+            minePage.visibility = if (home) View.GONE else View.VISIBLE
+        }
         handoffNote.visibility = if (home) View.VISIBLE else View.GONE
         handoff.visibility = if (home) View.VISIBLE else View.GONE
-        homeNavItem.setTextColor(if (home) Color.rgb(66,99,235) else Color.rgb(104,119,146))
-        mineNavItem.setTextColor(if (home) Color.rgb(104,119,146) else Color.rgb(66,99,235))
+        homeNavItem.setTextColor(if (home) Color.rgb(0,0,0) else Color.rgb(104,119,146))
+        mineNavItem.setTextColor(if (home) Color.rgb(104,119,146) else Color.rgb(0,0,0))
+        updatePillPosition(home)
+    }
+
+    private fun updatePillPosition(home: Boolean) {
+        val nav = navPill.parent as? FrameLayout ?: return
+        if (nav.width == 0) { nav.post { updatePillPosition(home) }; return }
+        val navWidth = nav.width - nav.paddingLeft - nav.paddingRight
+        val pillWidth = navPill.width.takeIf { it > 0 } ?: dp(80)
+        val targetX = nav.paddingLeft + (if (home) navWidth * 0.25f else navWidth * 0.75f) - pillWidth / 2f
+        pillAnimator?.cancel()
+        pillAnimator = ValueAnimator.ofFloat(navPill.translationX, targetX).apply {
+            duration = 340
+            interpolator = OvershootInterpolator(0.7f)
+            addUpdateListener { navPill.translationX = it.animatedValue as Float }
+            start()
+        }
     }
 
     private fun addStatusTabs() {
