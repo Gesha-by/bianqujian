@@ -179,7 +179,7 @@ class MainActivity : Activity() {
         val point = storage.getString("frequent_pickup_point", "").orEmpty().ifBlank { "暂无记录" }
         content.addView(TextView(this).apply { text = "常用取件点\n$point"; textSize = 15f; setTextColor(Color.rgb(23,35,61)); setPadding(dp(16), dp(14), dp(16), dp(14)); background = rounded(Color.WHITE, 16f) }, LinearLayout.LayoutParams(-1, ViewGroup.LayoutParams.WRAP_CONTENT))
         content.addView(TextView(this).apply { text = "辅助功能 · 可后续再加"; textSize = 13f; setTypeface(null, 1); setTextColor(Color.rgb(104,119,146)); setPadding(dp(2), dp(24), dp(2), dp(8)) })
-        val history = TextView(this).apply { text = "历史包裹\n查看已取件和已取消记录"; textSize = 15f; setTextColor(Color.rgb(23,35,61)); setPadding(dp(16), dp(14), dp(16), dp(14)); background = rounded(Color.WHITE, 16f); setOnClickListener { val picked = parcels.count { it.status == ParcelStatus.PICKED_UP }; val cancelled = parcels.count { it.status == ParcelStatus.CANCELLED }; AlertDialog.Builder(this@MainActivity).setTitle("历史包裹").setMessage("已取件：$picked 件\n已取消：$cancelled 件").setPositiveButton("知道了", null).show() } }
+        val history = TextView(this).apply { text = "历史包裹\n查看已取件和已取消记录"; textSize = 15f; setTextColor(Color.rgb(23,35,61)); setPadding(dp(16), dp(14), dp(16), dp(14)); background = rounded(Color.WHITE, 16f); setOnClickListener { showHistoryDialog() } }
         content.addView(history, LinearLayout.LayoutParams(-1, ViewGroup.LayoutParams.WRAP_CONTENT).apply { bottomMargin = dp(10) })
         history.tapFeedback()
         val clear = TextView(this).apply { text = "清理记录\n删除本机保存的包裹数据"; textSize = 15f; setTextColor(Color.rgb(198,65,65)); setPadding(dp(16), dp(14), dp(16), dp(14)); background = rounded(Color.WHITE, 16f); setOnClickListener { AlertDialog.Builder(this@MainActivity).setTitle("清理记录").setMessage("确定删除本机保存的所有包裹记录吗？此操作不可撤销。").setNegativeButton("取消", null).setPositiveButton("删除") { _, _ -> parcels.clear(); save(); refresh(); Toast.makeText(this@MainActivity, "记录已清理", Toast.LENGTH_SHORT).show() }.show() } }
@@ -209,6 +209,34 @@ class MainActivity : Activity() {
         options.addView(option("↻", "版本更新") { checkForUpdate() }, LinearLayout.LayoutParams(-1, dp(88)))
         about.addView(options, LinearLayout.LayoutParams(-1, 0, 1f))
         AlertDialog.Builder(this).setTitle("关于便取件").setView(about).setNegativeButton("返回", null).show()
+    }
+
+    private fun showHistoryDialog() {
+        val historyItems = parcels.filter { it.status == ParcelStatus.PICKED_UP || it.status == ParcelStatus.CANCELLED }.sortedByDescending { it.updatedAt }
+        val body = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(20), 0, dp(20), dp(8)) }
+        val picked = historyItems.count { it.status == ParcelStatus.PICKED_UP }
+        val cancelled = historyItems.count { it.status == ParcelStatus.CANCELLED }
+        val summary = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+        fun stat(label: String, count: Int, color: Int) = TextView(this).apply { text = "$count\n$label"; textSize = 14f; gravity = Gravity.CENTER; setTypeface(null, 1); setTextColor(color); background = rounded(Color.WHITE, 16f); setPadding(0, dp(12), 0, dp(12)) }
+        summary.addView(stat("已取件", picked, Color.rgb(35,145,83)), LinearLayout.LayoutParams(0, dp(68), 1f).apply { rightMargin = dp(6) })
+        summary.addView(stat("已取消", cancelled, Color.rgb(198,65,65)), LinearLayout.LayoutParams(0, dp(68), 1f).apply { leftMargin = dp(6) })
+        body.addView(summary, LinearLayout.LayoutParams(-1, ViewGroup.LayoutParams.WRAP_CONTENT).apply { bottomMargin = dp(12) })
+        if (historyItems.isEmpty()) {
+            body.addView(TextView(this).apply { text = "还没有历史包裹\n完成取件或取消后，会在这里显示"; textSize = 14f; gravity = Gravity.CENTER; setTextColor(Color.rgb(142,142,147)); setPadding(0, dp(32), 0, dp(32)) })
+        } else {
+            val cards = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+            historyItems.forEach { parcel ->
+                val accent = if (parcel.status == ParcelStatus.PICKED_UP) Color.rgb(35,145,83) else Color.rgb(198,65,65)
+                cards.addView(LinearLayout(this).apply {
+                    orientation = LinearLayout.VERTICAL; setPadding(dp(14), dp(12), dp(14), dp(12)); background = rounded(Color.WHITE, 16f)
+                    addView(TextView(this@MainActivity).apply { text = parcel.name; textSize = 15f; setTypeface(null, 1); setTextColor(Color.rgb(23,35,61)) })
+                    addView(TextView(this@MainActivity).apply { text = "${parcel.code} · ${parcel.location}"; textSize = 12f; setTextColor(Color.rgb(104,119,146)); setPadding(0, dp(5), 0, dp(3)) })
+                    addView(TextView(this@MainActivity).apply { text = "${statusLabel(parcel.status)} · ${parcel.updatedAt}"; textSize = 12f; setTextColor(accent) })
+                }, LinearLayout.LayoutParams(-1, ViewGroup.LayoutParams.WRAP_CONTENT).apply { bottomMargin = dp(8) })
+            }
+            body.addView(cards)
+        }
+        AlertDialog.Builder(this).setTitle("历史包裹").setView(ScrollView(this).apply { addView(body) }).setPositiveButton("完成", null).show()
     }
 
     private fun showAboutSection(title: String, body: String) {

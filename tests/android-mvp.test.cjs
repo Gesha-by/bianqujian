@@ -133,6 +133,9 @@ test('安卓 MVP 工程包含入口、清单和本地持久化逻辑', () => {
     assert.match(code, /minePage\.animate\(\)\.cancel\(\)/);
     assert.match(code, /GlassPillView/);
     assert.match(code, /showAboutDialog/);
+    assert.match(code, /showHistoryDialog/);
+    assert.match(code, /还没有历史包裹/);
+    assert.match(code, /已取件.*已取消/);
     assert.match(code, /text = "关于便取件"; textSize = 15f/);
     assert.doesNotMatch(code, /关于便取件\\n功能介绍 · 改进想法 · 版本更新/);
     assert.match(code, /功能介绍/);
