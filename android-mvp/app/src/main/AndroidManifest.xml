@@ -6,7 +6,7 @@
             <data android:scheme="market" />
         </intent>
     </queries>
-    <application android:theme="@style/Theme.Bianqujian" android:label="便取件" android:allowBackup="true">
+    <application android:theme="@style/Theme.Bianqujian" android:label="便取件" android:icon="@drawable/ic_bqj_app" android:roundIcon="@drawable/ic_bqj_app" android:allowBackup="true">
         <activity android:name=".MainActivity" android:exported="true">
             <intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent-filter>
         </activity>

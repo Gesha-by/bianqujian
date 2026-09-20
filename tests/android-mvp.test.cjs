@@ -48,6 +48,17 @@ test('安卓 MVP 工程包含入口、清单和本地持久化逻辑', () => {
   const wrapper = fs.readFileSync('android-mvp/gradle/wrapper/gradle-wrapper.properties', 'utf8');
   assert.match(wrapper, /gradle-9\.3\.0-bin\.zip/);
   const manifest = fs.readFileSync('android-mvp/app/src/main/AndroidManifest.xml', 'utf8');
+  assert.match(manifest, /android:theme="@style\/Theme\.Bianqujian"/);
+  assert.match(manifest, /android:icon="@drawable\/ic_bqj_app"/);
+  assert.ok(fs.existsSync('android-mvp/app/src/main/res/values/colors.xml'));
+  const colors = fs.readFileSync('android-mvp/app/src/main/res/values/colors.xml', 'utf8');
+  assert.match(colors, /bqj_background.*#F2F2F7/);
+  assert.match(colors, /bqj_primary.*#3B5BFE/);
+  assert.match(colors, /bqj_success.*#34C759/);
+  const styles = fs.readFileSync('android-mvp/app/src/main/res/values/styles.xml', 'utf8');
+  assert.match(styles, /Theme\.Material3\.Light\.NoActionBar/);
+  assert.match(styles, /@color\/bqj_background/);
+  assert.ok(fs.existsSync('android-mvp/app/src/main/res/drawable/ic_bqj_app.xml'));
   assert.doesNotMatch(manifest, /ACCESS_FINE_LOCATION|ACCESS_COARSE_LOCATION/);
   assert.match(manifest, /BIND_NOTIFICATION_LISTENER_SERVICE/);
   assert.match(manifest, /<queries>/);

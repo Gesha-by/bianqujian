@@ -1,1 +1,20 @@
-<resources><style name="Theme.Bianqujian" parent="Theme.Material3.DayNight.NoActionBar"><item name="android:fontFamily">sans</item><item name="android:colorAccent">#315CFF</item><item name="android:statusBarColor">#F7F8FC</item><item name="android:navigationBarColor">#F7F8FC</item><item name="android:windowLightStatusBar">true</item><item name="android:windowLightNavigationBar">true</item><item name="android:windowActionModeOverlay">true</item></style></resources>
+<resources>
+    <style name="Theme.Bianqujian" parent="Theme.Material3.Light.NoActionBar">
+        <item name="android:fontFamily">sans</item>
+        <item name="colorPrimary">@color/bqj_primary</item>
+        <item name="colorOnPrimary">@color/bqj_primary_foreground</item>
+        <item name="colorPrimaryContainer">@color/bqj_primary</item>
+        <item name="colorOnPrimaryContainer">@color/bqj_primary_foreground</item>
+        <item name="android:colorBackground">@color/bqj_background</item>
+        <item name="colorSurface">@color/bqj_card</item>
+        <item name="colorOnSurface">@color/bqj_foreground</item>
+        <item name="colorOnSurfaceVariant">@color/bqj_ink_2</item>
+        <item name="colorOutline">@color/bqj_border</item>
+        <item name="dividerColor">@color/bqj_border</item>
+        <item name="android:statusBarColor">@color/bqj_background</item>
+        <item name="android:navigationBarColor">@color/bqj_background</item>
+        <item name="android:windowLightStatusBar">true</item>
+        <item name="android:windowLightNavigationBar">true</item>
+        <item name="android:windowActionModeOverlay">true</item>
+    </style>
+</resources>
