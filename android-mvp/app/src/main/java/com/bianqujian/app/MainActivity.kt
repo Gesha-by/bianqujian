@@ -154,7 +154,7 @@ class MainActivity : Activity() {
         val nav = FrameLayout(this).apply {
             layoutParams = LinearLayout.LayoutParams(-1, dp(60))
             setPadding(dp(4), dp(4), dp(4), dp(4))
-            background = rounded(Color.argb(210, 255, 255, 255), 24f)
+            background = GradientDrawable().apply { setColor(Color.argb(195, 255, 255, 255)); cornerRadius = 999f }
             elevation = dp(8).toFloat()
         }
         navPill = GlassPillView(this).apply {
@@ -399,20 +399,17 @@ class MainActivity : Activity() {
     }
     private class GlassPillView(context: Context) : View(context) {
         private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
-        private val shadowPaint = Paint(Paint.ANTI_ALIAS_FLAG)
         override fun onDraw(canvas: Canvas) {
             super.onDraw(canvas)
             val w = width.toFloat(); val h = height.toFloat(); val r = h / 2f
-            shadowPaint.color = Color.argb(45, 0, 0, 0)
-            canvas.drawRoundRect(2f, 4f, w + 2f, h + 4f, r, r, shadowPaint)
-            paint.shader = LinearGradient(0f, 0f, 0f, h, intArrayOf(Color.argb(205, 255, 255, 255), Color.argb(165, 245, 245, 250), Color.argb(145, 230, 230, 235)), floatArrayOf(0f, 0.5f, 1f), Shader.TileMode.CLAMP)
+            paint.shader = LinearGradient(0f, 0f, 0f, h, intArrayOf(Color.argb(235, 255, 255, 255), Color.argb(200, 245, 245, 250), Color.argb(175, 230, 230, 235)), floatArrayOf(0f, 0.5f, 1f), Shader.TileMode.CLAMP)
             canvas.drawRoundRect(0f, 0f, w, h, r, r, paint)
-            paint.shader = LinearGradient(0f, 0f, 0f, h * 0.55f, Color.argb(110, 255, 255, 255), Color.argb(0, 255, 255, 255), Shader.TileMode.CLAMP)
-            canvas.drawRoundRect(1.5f, 1.5f, w - 1.5f, h * 0.55f, r, r, paint)
-            paint.shader = LinearGradient(0f, h * 0.72f, 0f, h - 1.5f, Color.argb(0, 255, 255, 255), Color.argb(70, 255, 255, 255), Shader.TileMode.CLAMP)
-            canvas.drawRoundRect(1.5f, h * 0.72f, w - 1.5f, h - 1.5f, r, r, paint)
+            paint.shader = LinearGradient(0f, 0f, 0f, h * 0.5f, Color.argb(140, 255, 255, 255), Color.argb(0, 255, 255, 255), Shader.TileMode.CLAMP)
+            canvas.drawRoundRect(1.5f, 1.5f, w - 1.5f, h * 0.5f, r, r, paint)
+            paint.shader = LinearGradient(0f, h * 0.75f, 0f, h - 1.5f, Color.argb(0, 255, 255, 255), Color.argb(90, 255, 255, 255), Shader.TileMode.CLAMP)
+            canvas.drawRoundRect(1.5f, h * 0.75f, w - 1.5f, h - 1.5f, r, r, paint)
             paint.shader = null
-            paint.style = Paint.Style.STROKE; paint.strokeWidth = 1.2f; paint.color = Color.argb(50, 255, 255, 255)
+            paint.style = Paint.Style.STROKE; paint.strokeWidth = 1.2f; paint.color = Color.argb(70, 255, 255, 255)
             canvas.drawRoundRect(1.5f, 1.5f, w - 1.5f, h - 1.5f, r, r, paint); paint.style = Paint.Style.FILL
         }
     }
