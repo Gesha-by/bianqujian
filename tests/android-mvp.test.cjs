@@ -177,22 +177,22 @@ test('安卓 MVP 工程包含入口、清单和本地持久化逻辑', () => {
     // Tab 切换带方向感
     assert.match(code, /showPage\(home: Boolean, instant: Boolean/);
     assert.match(code, /PILL_DURATION = 280/);
-    // 防撕裂：两页在 FrameLayout 中叠放，新页不透明置顶滑入、硬件层加速
+    // 两页在 FrameLayout 中叠放、背景不透明，硬件层加速
     assert.match(code, /val pageContainer = FrameLayout\(this\)/);
     assert.match(code, /incoming\.bringToFront\(\)/);
-    assert.match(code, /incoming\.alpha = 1f/);
     assert.match(code, /withLayer\(\)/);
     assert.match(code, /View\.INVISIBLE/);
     assert.match(code, /isVerticalScrollBarEnabled = false/);
     assert.match(code, /setBackgroundColor\(Color\.rgb\(247,248,252\)\)/);
-    // iOS push/pop 联动：旧页视差后退 + 压暗层，新页整宽滑入/旧页整宽滑出
-    assert.match(code, /pageDim/);
-    assert.match(code, /Color\.argb\(52, 0, 0, 0\)/);
-    assert.match(code, /0\.28f/);
-    assert.match(code, /DUR_PAGE = 300/);
-    assert.match(code, /val push = !home/);
-    assert.match(code, /pageInterpolator/);
-    assert.match(code, /0\.42f, 0f, 0\.58f, 1f/);
+    // 平级 Tab 切换：新页原地淡入 + 轻微上浮 8dp，旧页快速淡出；不做整页横移/压暗
+    assert.match(code, /incoming\.alpha = 0f/);
+    assert.match(code, /incoming\.translationY = dp\(8\)\.toFloat\(\)/);
+    assert.match(code, /\.alpha\(1f\)\.translationY\(0f\)/);
+    assert.match(code, /DUR_TAB = 200/);
+    assert.match(code, /DUR_TAB_OUT = 150/);
+    assert.doesNotMatch(code, /pageDim/);
+    assert.doesNotMatch(code, /val push = !home/);
+    assert.doesNotMatch(code, /pageInterpolator/);
     // 胶囊只平移不缩放，避免投影逐帧重算造成抖动
     assert.doesNotMatch(code, /navPill\.scaleX/);
 });
