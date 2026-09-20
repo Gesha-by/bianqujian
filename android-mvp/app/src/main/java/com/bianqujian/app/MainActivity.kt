@@ -39,7 +39,7 @@ import android.graphics.Path
 import android.graphics.Typeface
 import android.animation.ValueAnimator
 import android.view.animation.DecelerateInterpolator
-import android.view.animation.OvershootInterpolator
+import android.view.animation.PathInterpolator
 
 enum class ParcelStatus { IN_TRANSIT, READY, PICKED_UP, CANCELLED }
 data class Parcel(val code: String, val name: String = "未提供商品名", var found: Boolean = false, var status: ParcelStatus = ParcelStatus.READY, val source: String = "截图识别", val location: String = "未识别位置", val parcelType: String = "未知类型", val carrier: String = "未知快递", val trackingNumber: String = "未知运单号", val updatedAt: String = "未知时间", val imagePath: String = "")
@@ -60,6 +60,7 @@ class MainActivity : Activity() {
     private lateinit var mineNavItem: TextView
     private lateinit var navPill: View
     private var pillAnimator: ValueAnimator? = null
+    private val iosSpringInterpolator by lazy { PathInterpolator(0.32f, 0.72f, 0.35f, 1f) }
     private val storage by lazy { getSharedPreferences("parcels", MODE_PRIVATE) }
     private val codePattern = Pattern.compile("(?<![A-Z0-9])[A-Z]{1,3}\\s*[-—–－]?\\s*\\d{1,4}(?:\\s*[-—–－]\\s*\\d{1,4}){1,2}(?![A-Z0-9])")
     private val updateReceiver = object : BroadcastReceiver() { override fun onReceive(context: Context?, intent: Intent?) { parcels.clear(); load(); refresh() } }
@@ -168,14 +169,14 @@ class MainActivity : Activity() {
         val entering = if (home) homePage else minePage
         val leaving = if (home) minePage else homePage
         if (leaving.visibility == View.VISIBLE && entering.visibility == View.GONE) {
-            entering.translationX = if (home) -dp(28).toFloat() else dp(28).toFloat()
+            entering.translationX = if (home) -dp(22).toFloat() else dp(22).toFloat()
             entering.alpha = 0f
             entering.visibility = View.VISIBLE
-            leaving.animate().translationX(if (home) dp(28).toFloat() else -dp(28).toFloat()).alpha(0f).setDuration(220).setInterpolator(DecelerateInterpolator(1.2f)).withEndAction {
+            leaving.animate().translationX(if (home) dp(22).toFloat() else -dp(22).toFloat()).alpha(0f).setDuration(320).setInterpolator(iosSpringInterpolator).withEndAction {
                 leaving.visibility = View.GONE
                 leaving.translationX = 0f
             }.start()
-            entering.animate().translationX(0f).alpha(1f).setDuration(260).setInterpolator(DecelerateInterpolator(1.2f)).start()
+            entering.animate().translationX(0f).alpha(1f).setDuration(360).setInterpolator(iosSpringInterpolator).start()
         } else {
             homePage.visibility = if (home) View.VISIBLE else View.GONE
             minePage.visibility = if (home) View.GONE else View.VISIBLE
@@ -194,10 +195,23 @@ class MainActivity : Activity() {
         val pillWidth = navPill.width.takeIf { it > 0 } ?: dp(80)
         val targetX = nav.paddingLeft + (if (home) navWidth * 0.25f else navWidth * 0.75f) - pillWidth / 2f
         pillAnimator?.cancel()
-        pillAnimator = ValueAnimator.ofFloat(navPill.translationX, targetX).apply {
-            duration = 340
-            interpolator = OvershootInterpolator(0.7f)
-            addUpdateListener { navPill.translationX = it.animatedValue as Float }
+        val startX = navPill.translationX
+        val startScale = navPill.scaleX.coerceAtLeast(0.1f)
+        pillAnimator = ValueAnimator.ofFloat(0f, 1f).apply {
+            duration = 400
+            interpolator = iosSpringInterpolator
+            addUpdateListener { animator ->
+                val t = animator.animatedValue as Float
+                navPill.translationX = startX + (targetX - startX) * t
+                val scale = startScale + (1f - startScale) * t - 0.04f * kotlin.math.sin(t * Math.PI).toFloat()
+                navPill.scaleX = scale.coerceIn(0.92f, 1.08f)
+                navPill.scaleY = scale.coerceIn(0.92f, 1.08f)
+            }
+            withEndAction {
+                navPill.translationX = targetX
+                navPill.scaleX = 1f
+                navPill.scaleY = 1f
+            }
             start()
         }
     }
