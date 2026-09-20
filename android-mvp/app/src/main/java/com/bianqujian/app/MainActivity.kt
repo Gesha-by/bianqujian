@@ -18,12 +18,15 @@ import android.widget.*
 import android.app.AlertDialog
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import android.app.DownloadManager
 import androidx.core.app.NotificationCompat
+import androidx.core.content.FileProvider
 import android.content.BroadcastReceiver
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.content.IntentFilter
+import android.os.Environment
 import android.provider.Settings
 import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
@@ -84,14 +87,24 @@ class MainActivity : Activity() {
     private val storage by lazy { getSharedPreferences("parcels", MODE_PRIVATE) }
     private val codePattern = Pattern.compile("(?<![A-Z0-9])[A-Z]{1,3}\\s*[-—–－]?\\s*\\d{1,4}(?:\\s*[-—–－]\\s*\\d{1,4}){1,2}(?![A-Z0-9])")
     private val updateReceiver = object : BroadcastReceiver() { override fun onReceive(context: Context?, intent: Intent?) { parcels.clear(); load(); refresh() } }
+    private val downloadReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            val expected = storage.getLong("update_download_id", -1L)
+            if (intent?.getLongExtra(DownloadManager.EXTRA_DOWNLOAD_ID, -1L) != expected) return
+            val uri = (getSystemService(DOWNLOAD_SERVICE) as DownloadManager).getUriForDownloadedFile(expected)
+            if (uri == null) { Toast.makeText(this@MainActivity, "更新包下载失败，请重试", Toast.LENGTH_SHORT).show(); return }
+            startActivity(Intent(Intent.ACTION_VIEW).apply { setDataAndType(uri, "application/vnd.android.package-archive"); addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION) })
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) { super.onCreate(savedInstanceState); load(); render() }
     override fun onResume() {
         super.onResume()
         registerReceiver(updateReceiver, IntentFilter(ParcelNotificationListener.ACTION_UPDATED), RECEIVER_NOT_EXPORTED)
+        registerReceiver(downloadReceiver, IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE), RECEIVER_NOT_EXPORTED)
         render()
     }
-    override fun onPause() { unregisterReceiver(updateReceiver); super.onPause() }
+    override fun onPause() { unregisterReceiver(updateReceiver); unregisterReceiver(downloadReceiver); super.onPause() }
 
     private fun render() {
         val root = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(20, 16, 20, 16); setBackgroundColor(Color.rgb(247,248,252)) }
@@ -221,7 +234,7 @@ class MainActivity : Activity() {
                 result.onSuccess { (tag, download) ->
                     when {
                         tag.isBlank() -> Toast.makeText(this, "暂未发布版本", Toast.LENGTH_SHORT).show()
-                        isNewerVersion(tag, CURRENT_VERSION) -> AlertDialog.Builder(this).setTitle("发现新版本 $tag").setMessage("是否打开下载页面？").setNegativeButton("稍后", null).setPositiveButton("立即更新") { _, _ -> startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(download.ifBlank { RELEASES_PAGE }))) }.show()
+                        isNewerVersion(tag, CURRENT_VERSION) -> AlertDialog.Builder(this).setTitle("发现新版本 $tag").setMessage("是否下载并安装更新？").setNegativeButton("稍后", null).setPositiveButton("立即更新") { _, _ -> downloadAndInstall(download.ifBlank { RELEASES_PAGE }) }.show()
                         else -> Toast.makeText(this, "当前已是最新版本", Toast.LENGTH_SHORT).show()
                     }
                 }.onFailure { Toast.makeText(this, "检查更新失败，请稍后重试", Toast.LENGTH_SHORT).show() }
@@ -234,6 +247,20 @@ class MainActivity : Activity() {
         val r = parts(remote); val l = parts(local)
         for (i in 0 until maxOf(r.size, l.size)) { val rv = r.getOrElse(i) { 0 }; val lv = l.getOrElse(i) { 0 }; if (rv != lv) return rv > lv }
         return false
+    }
+
+    private fun downloadAndInstall(url: String) {
+        if (!url.endsWith(".apk")) { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))); return }
+        val request = DownloadManager.Request(Uri.parse(url)).apply {
+            setTitle("便取件更新包")
+            setDescription("正在下载最新版本")
+            setMimeType("application/vnd.android.package-archive")
+            setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
+            setDestinationInExternalFilesDir(this@MainActivity, Environment.DIRECTORY_DOWNLOADS, "bianqujian-update.apk")
+        }
+        val id = (getSystemService(DOWNLOAD_SERVICE) as DownloadManager).enqueue(request)
+        storage.edit().putLong("update_download_id", id).apply()
+        Toast.makeText(this, "已开始下载更新，完成后会提示安装", Toast.LENGTH_LONG).show()
     }
 
     private fun buildBottomNavigation(): FrameLayout {
@@ -675,7 +702,7 @@ class MainActivity : Activity() {
     private fun load() { storage.getString("items", "")?.lines()?.filter { it.isNotBlank() }?.forEach { val p = it.split("|"); if (p.size >= 3) parcels.add(Parcel(p[0], p[1], p[2] == "true", if (p.size >= 4) runCatching { ParcelStatus.valueOf(p[3]) }.getOrDefault(if (p[2] == "true") ParcelStatus.PICKED_UP else ParcelStatus.READY) else if (p[2] == "true") ParcelStatus.PICKED_UP else ParcelStatus.READY, p.getOrElse(4) { "截图识别" }, p.getOrElse(5) { "未识别位置" }, p.getOrElse(6) { "未知类型" }, p.getOrElse(7) { "未知快递" }, p.getOrElse(8) { "未知运单号" }, p.getOrElse(9) { "未知时间" }, p.getOrElse(10) { "" })) }; pruneHistory() }
     companion object {
         private const val MAX_TERMINAL_HISTORY = 100
-        private const val CURRENT_VERSION = "0.1.0"
+        private const val CURRENT_VERSION = "0.1.1"
         private const val LATEST_RELEASE_API = "https://api.github.com/repos/Gesha-by/bianqujian/releases/latest"
         private const val RELEASES_PAGE = "https://github.com/Gesha-by/bianqujian/releases/latest"
         // 统一三档节奏：快速反馈 / 普通过渡 / 重点展示

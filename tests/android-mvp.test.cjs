@@ -144,6 +144,12 @@ test('安卓 MVP 工程包含入口、清单和本地持久化逻辑', () => {
     assert.match(code, /browser_download_url/);
     assert.match(code, /isNewerVersion/);
     assert.match(code, /ACTION_VIEW/);
+    assert.match(code, /DownloadManager/);
+    assert.match(code, /downloadAndInstall/);
+    assert.match(code, /ACTION_DOWNLOAD_COMPLETE/);
+    assert.match(code, /FileProvider/);
+    assert.match(fs.readFileSync('android-mvp/app/src/main/AndroidManifest.xml', 'utf8'), /REQUEST_INSTALL_PACKAGES/);
+    assert.ok(fs.existsSync('android-mvp/app/src/main/res/xml/file_paths.xml'));
     assert.match(fs.readFileSync('android-mvp/app/src/main/AndroidManifest.xml', 'utf8'), /android.permission.INTERNET/);
     // 选中态：白色滑动胶囊 + 投影；未选中项无深灰底，只用灰色文字
     assert.doesNotMatch(code, /glassTabBg/);
