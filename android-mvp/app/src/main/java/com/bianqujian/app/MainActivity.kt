@@ -176,7 +176,7 @@ class MainActivity : Activity() {
         val items = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
         fun item(label: String, selected: Boolean, onClick: () -> Unit) = TextView(this).apply {
             text = label; textSize = 12f; gravity = Gravity.CENTER; includeFontPadding = true; setTypeface(null, 1); setTextColor(if (selected) Color.rgb(30,30,30) else Color.rgb(225,225,230)); setPadding(0, dp(4), 0, dp(4)); setOnClickListener { onClick() }
-            background = GradientDrawable().apply { setColor(Color.argb(175, 35, 35, 40)); cornerRadius = 999f }
+            background = if (selected) null else GradientDrawable().apply { setColor(Color.argb(175, 35, 35, 40)); cornerRadius = 999f }
         }
         homeNavItem = item("⌂\n首页", true) { showPage(true) }
         mineNavItem = item("○\n我的", false) { showPage(false) }
@@ -200,6 +200,8 @@ class MainActivity : Activity() {
         handoff.visibility = if (home) View.VISIBLE else View.GONE
         homeNavItem.setTextColor(if (home) Color.rgb(30,30,30) else Color.rgb(225,225,230))
         mineNavItem.setTextColor(if (home) Color.rgb(225,225,230) else Color.rgb(30,30,30))
+        homeNavItem.background = if (home) null else GradientDrawable().apply { setColor(Color.argb(175, 35, 35, 40)); cornerRadius = 999f }
+        mineNavItem.background = if (home) GradientDrawable().apply { setColor(Color.argb(175, 35, 35, 40)); cornerRadius = 999f } else null
         updatePillPosition(home)
     }
 
