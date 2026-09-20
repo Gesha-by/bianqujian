@@ -134,6 +134,7 @@ class MainActivity : Activity() {
         import.addView(Button(this).apply { text = "开始识别"; textSize = 13f; setTypeface(null, 1); minHeight = dp(48); setTextColor(Color.WHITE); background = rounded(Color.rgb(66,99,235), 18f); elevation = 0f; stateListAnimator = null; setOnClickListener { chooseText() } }.also { it.tapFeedback() })
         importCard = import
         val simulate = Button(this).apply { text = "模拟到件数据（测试）"; textSize = 10f; setTextColor(Color.rgb(104,119,146)); background = rounded(Color.rgb(242,245,250), 16f); elevation = 0f; stateListAnimator = null; setOnClickListener { simulateArrival() }; visibility = if ((applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0) View.VISIBLE else View.GONE }.also { it.tapFeedback() }
+        val simulateMany = Button(this).apply { text = "模拟 20 条数据（测试）"; textSize = 10f; setTextColor(Color.rgb(104,119,146)); background = rounded(Color.rgb(242,245,250), 16f); elevation = 0f; stateListAnimator = null; setOnClickListener { simulateManyParcels() }; visibility = if ((applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0) View.VISIBLE else View.GONE }.also { it.tapFeedback() }
         val simulatePicked = Button(this).apply { text = "模拟拼多多已取件通知（测试）"; textSize = 10f; setTextColor(Color.rgb(104,119,146)); background = rounded(Color.rgb(242,245,250), 16f); elevation = 0f; stateListAnimator = null; setOnClickListener { simulatePickedUpNotification() }; visibility = if ((applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0) View.VISIBLE else View.GONE }.also { it.tapFeedback() }
         val autoSync = Button(this).apply { text = if (isNotificationAccessEnabled()) "通知自动同步已开启" else "开启通知自动同步"; textSize = 11f; setTextColor(Color.rgb(66,99,235)); background = rounded(Color.rgb(237,241,255), 16f); elevation = 0f; stateListAnimator = null; setOnClickListener { startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)) } }.also { it.tapFeedback() }
         statusTabs = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; setPadding(0, 14, 0, 4) }
@@ -144,7 +145,7 @@ class MainActivity : Activity() {
         handoffNote = TextView(this).apply { text = "取到包裹后，再进行最后一步"; textSize = 12f; setTextColor(Color.rgb(92,103,126)); setPadding(2, 16, 2, 6) }
         handoff = Button(this).apply { text = "第三步  打开拼多多扫描取件"; textSize = 15f; setTypeface(null, 1); setTextColor(Color.WHITE); background = rounded(Color.rgb(23,35,61), 24f); elevation = 0f; stateListAnimator = null; setPadding(16, 16, 16, 16); setOnClickListener { choosePddOpenMode() } }.also { it.tapFeedback() }
         val content = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(0, 0, 0, 12) }
-        content.addView(title); content.addView(hero); content.addView(import, LinearLayout.LayoutParams(-1, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = 14 }); content.addView(autoSync, LinearLayout.LayoutParams(-1, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = 7 }); content.addView(simulate, LinearLayout.LayoutParams(-1, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = 7 }); content.addView(simulatePicked, LinearLayout.LayoutParams(-1, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = 7 }); content.addView(statusTabs); content.addView(summary); content.addView(list)
+        content.addView(title); content.addView(hero); content.addView(import, LinearLayout.LayoutParams(-1, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = 14 }); content.addView(autoSync, LinearLayout.LayoutParams(-1, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = 7 }); content.addView(simulate, LinearLayout.LayoutParams(-1, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = 7 }); content.addView(simulateMany, LinearLayout.LayoutParams(-1, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = 7 }); content.addView(simulatePicked, LinearLayout.LayoutParams(-1, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = 7 }); content.addView(statusTabs); content.addView(summary); content.addView(list)
         homePage = ScrollView(this).apply { isFillViewport = true; isVerticalScrollBarEnabled = false; setBackgroundColor(Color.rgb(247,248,252)); addView(content) }
         minePage = buildMinePage()
         minePage.visibility = View.INVISIBLE
@@ -542,6 +543,17 @@ class MainActivity : Activity() {
         val item = Parcel(code, "洗衣液", false, ParcelStatus.READY, "模拟到件", "妈妈驿站", "普通快递", "圆通", "YT000000000000", SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.CHINA).format(Date()), "")
         if (index < 0) parcels.add(item) else parcels[index] = item
         save(); refresh(); Toast.makeText(this, "已加入一条模拟到件数据", Toast.LENGTH_SHORT).show()
+    }
+    private fun simulateManyParcels() {
+        val now = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.CHINA).format(Date())
+        var added = 0
+        for (index in 1..20) {
+            val code = "T-$index-${100 + index}"
+            if (parcels.any { it.code == code }) continue
+            parcels.add(Parcel(code, "测试商品 $index", false, ParcelStatus.READY, "批量模拟", "妈妈驿站", "普通快递", "圆通", "YTTEST${index.toString().padStart(8, '0')}", now, ""))
+            added++
+        }
+        save(); selectedStatus = null; refresh(); Toast.makeText(this, "已加入 $added 条模拟数据，可滑动检查列表", Toast.LENGTH_LONG).show()
     }
     private fun simulatePickedUpNotification() {
         val code = "A-302-8"

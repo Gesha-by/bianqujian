@@ -34,6 +34,9 @@ test('安卓 MVP 工程包含入口、清单和本地持久化逻辑', () => {
   assert.match(code, /FLAG_DEBUGGABLE/);
   assert.match(code, /模拟拼多多已取件通知/);
   assert.match(code, /simulatePickedUpNotification/);
+  assert.match(code, /模拟 20 条数据（测试）/);
+  assert.match(code, /simulateManyParcels/);
+  assert.match(code, /for \(index in 1\.\.20\)/);
   assert.match(code, /ParcelStatus.READY, "模拟到件"/);
   assert.match(code, /completedList/);
   assert.match(code, /IN_TRANSIT/);
