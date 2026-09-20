@@ -83,9 +83,9 @@ class MainActivity : Activity() {
         hero.addView(TextView(this).apply { text = pickupTitle; textSize = 11f; setTextColor(Color.rgb(66,99,235)); setTypeface(null, 1) })
         hero.addView(TextView(this).apply { text = pickupPoint; textSize = 15f; setTextColor(Color.rgb(28,28,30)); setTypeface(null, 1); setPadding(0, 5, 0, 8) })
         hero.addView(TextView(this).apply { text = "ⓘ  $pickupTip"; textSize = 10f; setTextColor(Color.rgb(66,99,235)); background = rounded(Color.rgb(242,242,247), 16f); setPadding(9, 6, 9, 6) })
-        val import = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; setPadding(14, 11, 8, 11); background = rounded(Color.WHITE, 22f) }
-        import.addView(TextView(this).apply { text = "导入订单长截图\n识别后确认，再加入找件清单"; textSize = 12f; setTextColor(Color.rgb(42,55,82)); layoutParams = LinearLayout.LayoutParams(0, -2, 1f) })
-        import.addView(Button(this).apply { text = "识别图片"; textSize = 11f; setTextColor(Color.rgb(66,99,235)); background = rounded(Color.rgb(237,241,255), 16f); elevation = 0f; stateListAnimator = null; setOnClickListener { chooseText() } })
+        val import = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; setPadding(16, 14, 10, 14); background = rounded(Color.rgb(232,238,255), 22f) }
+        import.addView(TextView(this).apply { text = "第一步  导入到件截图\n识别后确认，再加入找件清单"; textSize = 13f; setTypeface(null, 1); setTextColor(Color.rgb(28,48,92)); layoutParams = LinearLayout.LayoutParams(0, -2, 1f) })
+        import.addView(Button(this).apply { text = "开始识别"; textSize = 13f; setTypeface(null, 1); minHeight = dp(48); setTextColor(Color.WHITE); background = rounded(Color.rgb(66,99,235), 18f); elevation = 0f; stateListAnimator = null; setOnClickListener { chooseText() } })
         val simulate = Button(this).apply { text = "模拟到件数据（测试）"; textSize = 10f; setTextColor(Color.rgb(104,119,146)); background = rounded(Color.rgb(242,245,250), 16f); elevation = 0f; stateListAnimator = null; setOnClickListener { simulateArrival() }; visibility = if ((applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0) View.VISIBLE else View.GONE }
         val simulatePicked = Button(this).apply { text = "模拟拼多多已取件通知（测试）"; textSize = 10f; setTextColor(Color.rgb(104,119,146)); background = rounded(Color.rgb(242,245,250), 16f); elevation = 0f; stateListAnimator = null; setOnClickListener { simulatePickedUpNotification() }; visibility = if ((applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0) View.VISIBLE else View.GONE }
         val autoSync = Button(this).apply { text = if (isNotificationAccessEnabled()) "通知自动同步已开启" else "开启通知自动同步"; textSize = 11f; setTextColor(Color.rgb(66,99,235)); background = rounded(Color.rgb(237,241,255), 16f); elevation = 0f; stateListAnimator = null; setOnClickListener { startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)) } }
@@ -95,7 +95,7 @@ class MainActivity : Activity() {
         addStatusTabs()
         summary = TextView(this).apply { textSize = 14f; setTextColor(Color.rgb(23,35,61)); setTypeface(null, 1); setPadding(12, 18, 2, 8) }
         val handoffNote = TextView(this).apply { text = "取到包裹后，再进行最后一步"; textSize = 12f; setTextColor(Color.rgb(92,103,126)); setPadding(2, 16, 2, 6) }
-        val handoff = Button(this).apply { text = "打开拼多多扫描取件"; textSize = 14f; setTextColor(Color.WHITE); background = rounded(Color.rgb(23,35,61), 24f); elevation = 0f; stateListAnimator = null; setPadding(16, 16, 16, 16); setOnClickListener { choosePddOpenMode() } }
+        val handoff = Button(this).apply { text = "第三步  打开拼多多扫描取件"; textSize = 15f; setTypeface(null, 1); setTextColor(Color.WHITE); background = rounded(Color.rgb(23,35,61), 24f); elevation = 0f; stateListAnimator = null; setPadding(16, 16, 16, 16); setOnClickListener { choosePddOpenMode() } }
         val content = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(0, 0, 0, 12) }
         content.addView(title); content.addView(hero); content.addView(import, LinearLayout.LayoutParams(-1, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = 14 }); content.addView(autoSync, LinearLayout.LayoutParams(-1, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = 7 }); content.addView(simulate, LinearLayout.LayoutParams(-1, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = 7 }); content.addView(simulatePicked, LinearLayout.LayoutParams(-1, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = 7 }); content.addView(statusTabs); content.addView(summary); content.addView(list)
         root.addView(ScrollView(this).apply { isFillViewport = true; addView(content) }, LinearLayout.LayoutParams(-1, 0, 1f)); root.addView(handoffNote); root.addView(handoff, LinearLayout.LayoutParams(-1, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = 6 }); setContentView(root); refresh()
@@ -105,7 +105,7 @@ class MainActivity : Activity() {
         val tabs = listOf(null to "全部", ParcelStatus.READY to "待取件", ParcelStatus.PICKED_UP to "已取件", ParcelStatus.CANCELLED to "已取消")
         tabs.forEach { (status, label) ->
             statusTabs.addView(Button(this).apply {
-                text = label; textSize = 11f; minWidth = 0; minimumWidth = 0; setPadding(2, 7, 2, 7)
+                text = label; textSize = 12f; setTypeface(null, 1); minWidth = 0; minimumWidth = 0; minHeight = dp(46); setPadding(2, 7, 2, 7); elevation = 0f; stateListAnimator = null; background = rounded(if (status == ParcelStatus.READY) Color.rgb(66,99,235) else Color.rgb(242,244,249), 16f); setTextColor(if (status == ParcelStatus.READY) Color.WHITE else Color.rgb(64,81,112))
                 layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply { marginEnd = dp(4) }
                 setOnClickListener { selectedStatus = status; refresh() }
             })
@@ -228,11 +228,11 @@ class MainActivity : Activity() {
     private fun refresh() {
         list.removeAllViews()
         val current = if (selectedStatus == null) parcels.filter { it.status != ParcelStatus.IN_TRANSIT } else parcels.filter { it.status == selectedStatus }
-        summary.text = "${statusLabel(selectedStatus)} · ${current.size} 件"
+        summary.text = "第二步  ${statusLabel(selectedStatus)} · ${current.size} 件"
         if (current.isEmpty()) list.addView(TextView(this).apply { text = "暂无${statusLabel(selectedStatus)}包裹"; textSize = 13f; setTextColor(Color.rgb(104,119,146)); gravity = Gravity.CENTER; setPadding(4, 24, 4, 24) })
         current.forEach { addParcelRow(list, it) }
         val filters = listOf<ParcelStatus?>(null, ParcelStatus.READY, ParcelStatus.PICKED_UP, ParcelStatus.CANCELLED)
-        for (index in 0 until statusTabs.childCount) { val filter = filters[index]; val view = statusTabs.getChildAt(index) as Button; val count = if (filter == null) parcels.count { it.status != ParcelStatus.IN_TRANSIT } else parcels.count { it.status == filter }; view.text = "${statusLabel(filter)}（$count）"; view.background = rounded(if (filter == selectedStatus) Color.rgb(66,99,235) else Color.rgb(242,245,250), 10f); view.setTextColor(if (filter == selectedStatus) Color.WHITE else Color.rgb(64,81,112)) }
+        for (index in 0 until statusTabs.childCount) { val filter = filters[index]; val view = statusTabs.getChildAt(index) as Button; val count = if (filter == null) parcels.count { it.status != ParcelStatus.IN_TRANSIT } else parcels.count { it.status == filter }; view.text = "${statusLabel(filter)}（$count）"; view.background = rounded(if (filter == selectedStatus) Color.rgb(66,99,235) else Color.rgb(242,245,250), 16f); view.setTextColor(if (filter == selectedStatus) Color.WHITE else Color.rgb(64,81,112)) }
     }
     private fun statusLabel(status: ParcelStatus?) = when (status) { null -> "全部"; ParcelStatus.READY -> "待取件"; ParcelStatus.PICKED_UP -> "已取件"; ParcelStatus.CANCELLED -> "已取消"; ParcelStatus.IN_TRANSIT -> "运输中" }
     private fun addParcelRow(container: LinearLayout, parcel: Parcel) {
