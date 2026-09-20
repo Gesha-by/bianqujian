@@ -88,6 +88,7 @@ test('安卓 MVP 工程包含入口、清单和本地持久化逻辑', () => {
   assert.match(code, /trackingNumber: String/);
   assert.match(code, /ACTION_NOTIFICATION_LISTENER_SETTINGS/);
   assert.match(code, /isNotificationAccessEnabled/);
+  assert.match(code, /registerReceiver\(updateReceiver[\s\S]*?render\(\)/);
   assert.doesNotMatch(code, /手动调整/);
   assert.doesNotMatch(code, /修改状态/);
   assert.doesNotMatch(code, /chooseStatus/);
